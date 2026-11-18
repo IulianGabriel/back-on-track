@@ -2,10 +2,11 @@
 import * as store from './db.js';
 import * as tasks from './tasks.js';
 import * as journal from './journal.js';
+import * as finance from './finance.js';
 import * as profile from './profile.js';
 import { $, romanianDate, toast, reportError } from './util.js';
 
-const TABS = ['tasks', 'journal', 'profile'];
+const TABS = ['tasks', 'journal', 'finance', 'profile'];
 
 // ---------- Screens ----------
 
@@ -18,6 +19,7 @@ function show(id) {
 store.onUserChanged((user) => {
   tasks.stop();
   journal.stop();
+  finance.stop();
   profile.stop();
 
   if (!user) {
@@ -32,6 +34,7 @@ store.onUserChanged((user) => {
   show('app');
   tasks.start(user.uid);
   journal.start(user.uid);
+  finance.start(user.uid);
   profile.start(user);
   showTab(currentTab());
 });
@@ -72,6 +75,7 @@ function showTab(tab) {
     btn.setAttribute('aria-current', t === tab ? 'page' : 'false');
   }
   if (tab === 'journal') journal.onShow();
+  if (tab === 'finance') finance.onShow();
   if (tab === 'profile') profile.onShow();
 }
 
@@ -91,6 +95,7 @@ window.addEventListener('hashchange', () => showTab(currentTab()));
 function checkForNewDay() {
   tasks.checkForNewDay();
   journal.checkForNewDay();
+  finance.checkForNewDay();
 }
 setInterval(checkForNewDay, 20_000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForNewDay(); });
@@ -102,10 +107,11 @@ $('#export-btn').addEventListener('click', async () => {
   try {
     const data = {
       app: 'on-track',
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
       tasks: tasks.getTasks().map(({ createdAt, ...t }) => t),
       journal: await journal.getAllEntries(),
+      finance: await finance.getAllEntries(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -136,13 +142,18 @@ $('#import-file').addEventListener('change', async (e) => {
     const backupJournal = (data.journal || []).filter(
       (j) => j && /^\d{4}-\d{2}-\d{2}$/.test(j.date) && typeof j.text === 'string' && j.text.trim(),
     );
-    if (!backupTasks.length && !backupJournal.length) throw new Error('Nothing to restore in that file.');
+    const backupFinance = (data.finance || []).filter(
+      (t) => t && typeof t.id === 'string' && ['add', 'spend', 'move'].includes(t.type)
+        && ['card', 'cash'].includes(t.account) && Number.isInteger(t.amount) && t.amount > 0
+        && /^\d{4}-\d{2}-\d{2}$/.test(t.date) && typeof t.key === 'string',
+    ).map(({ id, type, account, amount, note, date, at, key }) => ({ id, type, account, amount, note: note || '', date, at: at || 0, key }));
+    if (!backupTasks.length && !backupJournal.length && !backupFinance.length) throw new Error('Nothing to restore in that file.');
 
     // Never overwrite a journal entry that already has text in the app.
     const current = new Map((await journal.getAllEntries()).map((j) => [j.date, j.text]));
     const journalToRestore = backupJournal.filter((j) => !(current.get(j.date) || '').trim());
 
-    if (!confirm(`Restore ${backupTasks.length} task(s) and ${journalToRestore.length} journal entr${journalToRestore.length === 1 ? 'y' : 'ies'} from this backup?\n\nNothing already in the app is deleted, and journal entries you've already written are never replaced.`)) return;
+    if (!confirm(`Restore from this backup?\n\n• ${backupTasks.length} task(s)\n• ${journalToRestore.length} journal entr${journalToRestore.length === 1 ? 'y' : 'ies'}\n• finance entries that are missing (out of ${backupFinance.length})\n\nNothing already in the app is deleted, and journal entries you've already written are never replaced.`)) return;
 
     if (backupTasks.length) {
       await store.importTasks(uid, backupTasks.map((t) => ({
@@ -151,6 +162,11 @@ $('#import-file').addEventListener('change', async (e) => {
       })));
     }
     if (journalToRestore.length) await store.importJournal(uid, journalToRestore);
+    if (backupFinance.length) {
+      await store.importFinance(uid, backupFinance);
+      finance.start(uid);
+      if (currentTab() === 'finance') finance.onShow();
+    }
     toast('Backup restored.');
     if (journalToRestore.length) { journal.start(uid); if (currentTab() === 'journal') journal.onShow(); }
   } catch (err) {

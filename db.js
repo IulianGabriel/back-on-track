@@ -22,7 +22,7 @@ import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch, getDocs, getDoc,
   query, where, orderBy, limit, startAfter, documentId, getCountFromServer,
-  arrayUnion, arrayRemove, serverTimestamp,
+  arrayUnion, arrayRemove, serverTimestamp, increment,
 } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js';
 
 export const configured = !!firebaseConfig;
@@ -137,6 +137,88 @@ export async function getJournal(uid) {
   return snap.docs
     .map((d) => ({ date: d.id, text: d.data().text || '' }))
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+// ---------- Finance ----------
+// users/{uid}/finance/{id}: one money movement
+//   type    – "add", "spend" or "move" (move = cash → card)
+//   account – "card" or "cash" (for "move" it's where the money comes from: "cash")
+//   amount  – in bani (1 RON = 100 bani), so there are no rounding errors
+//   note    – optional, e.g. "from Mom" or "groceries"
+//   date    – the Romanian date it belongs to; key = date + time, used for sorting
+// users/{uid}/meta/finance: the current totals { card, cash }, updated together with every entry.
+
+const financeCol = (uid) => collection(db, 'users', uid, 'finance');
+const financeTotalsDoc = (uid) => doc(db, 'users', uid, 'meta', 'finance');
+
+// How an entry changes the two balances.
+export function financeEffect(tx) {
+  if (tx.type === 'move') return { card: tx.amount, cash: -tx.amount };
+  const sign = tx.type === 'spend' ? -1 : 1;
+  return tx.account === 'card' ? { card: sign * tx.amount, cash: 0 } : { card: 0, cash: sign * tx.amount };
+}
+
+export function watchFinanceTotals(uid, onChange, onError) {
+  return onSnapshot(financeTotalsDoc(uid), (snap) => {
+    const d = snap.exists() ? snap.data() : {};
+    onChange({ card: d.card || 0, cash: d.cash || 0 });
+  }, onError);
+}
+
+export function addFinanceEntry(uid, tx) {
+  const { id, ...data } = tx;
+  const e = financeEffect(tx);
+  const batch = writeBatch(db);
+  batch.set(doc(financeCol(uid), id), { ...data, createdAt: serverTimestamp() });
+  batch.set(financeTotalsDoc(uid), { card: increment(e.card), cash: increment(e.cash) }, { merge: true });
+  return batch.commit();
+}
+
+export function deleteFinanceEntry(uid, tx) {
+  const e = financeEffect(tx);
+  const batch = writeBatch(db);
+  batch.delete(doc(financeCol(uid), tx.id));
+  batch.set(financeTotalsDoc(uid), { card: increment(-e.card), cash: increment(-e.cash) }, { merge: true });
+  return batch.commit();
+}
+
+const txFrom = (d) => { const { createdAt, ...data } = d.data(); return { id: d.id, ...data }; };
+
+// Newest first, a page at a time.
+export async function getFinancePage(uid, { afterKey = null, size = 20 }) {
+  const parts = [orderBy('key', 'desc')];
+  if (afterKey) parts.push(startAfter(afterKey));
+  parts.push(limit(size));
+  return (await getDocs(query(financeCol(uid), ...parts))).docs.map(txFrom);
+}
+
+// Everything from a date onwards (for the chart and "this month"), newest first.
+export async function getFinanceSince(uid, date) {
+  const q = query(financeCol(uid), where('key', '>=', date), orderBy('key', 'desc'));
+  return (await getDocs(q)).docs.map(txFrom);
+}
+
+export async function getAllFinance(uid) {
+  return (await getDocs(query(financeCol(uid), orderBy('key', 'desc')))).docs.map(txFrom);
+}
+
+// Restore: add entries that aren't there yet, then recount the totals from every entry.
+export async function importFinance(uid, entries) {
+  const existing = new Set((await getAllFinance(uid)).map((t) => t.id));
+  const fresh = entries.filter((t) => !existing.has(t.id));
+  for (let i = 0; i < fresh.length; i += 400) {
+    const batch = writeBatch(db);
+    fresh.slice(i, i + 400).forEach(({ id, ...data }) => batch.set(doc(financeCol(uid), id), data));
+    await batch.commit();
+  }
+  const totals = { card: 0, cash: 0 };
+  for (const t of await getAllFinance(uid)) {
+    const e = financeEffect(t);
+    totals.card += e.card;
+    totals.cash += e.cash;
+  }
+  await setDoc(financeTotalsDoc(uid), totals);
+  return fresh.length;
 }
 
 // ---------- Profile ----------

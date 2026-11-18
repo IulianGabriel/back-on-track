@@ -121,6 +121,99 @@
       <div id="journal-list"></div>
     </div>
 
+    <!-- ===== Finance tab ===== -->
+    <div id="tab-finance" hidden>
+      <header class="topbar">
+        <div class="headline">
+          <div class="today">Finance</div>
+          <div class="muted small">Your savings, step by step</div>
+        </div>
+      </header>
+      <div class="progress"></div>
+
+      <section class="card fin-hero">
+        <div class="fin-hero-text">
+          <div class="muted small">Total savings</div>
+          <div id="fin-total" class="fin-total">…</div>
+          <ul class="legend">
+            <li><span class="swatch swatch-card"></span>Card <b id="legend-card"></b></li>
+            <li><span class="swatch swatch-cash"></span>Cash <b id="legend-cash"></b></li>
+          </ul>
+        </div>
+        <div class="donut-wrap">
+          <svg id="fin-donut" viewBox="0 0 100 100" role="img" aria-label="Split of savings between card and cash"></svg>
+          <div id="fin-donut-label" class="donut-label"></div>
+        </div>
+      </section>
+
+      <div class="accounts">
+        <section class="card account">
+          <div class="account-name"><span class="swatch swatch-card"></span>On card</div>
+          <div id="fin-card" class="account-value"></div>
+          <div class="account-actions">
+            <button class="fin-btn add" data-fin-action="add-card">+ Add</button>
+            <button class="fin-btn spend" data-fin-action="spend-card">− Spend</button>
+          </div>
+        </section>
+        <section class="card account">
+          <div class="account-name"><span class="swatch swatch-cash"></span>In cash</div>
+          <div id="fin-cash" class="account-value"></div>
+          <div class="account-actions">
+            <button class="fin-btn add" data-fin-action="add-cash">+ Add</button>
+            <button class="fin-btn spend" data-fin-action="spend-cash">− Spend</button>
+          </div>
+        </section>
+      </div>
+      <button class="fin-move" data-fin-action="move">⇄ Move cash to card</button>
+
+      <section class="card fin-chart-card">
+        <div class="card-head">
+          <h2>Savings over time</h2>
+          <div class="ranges" role="group" aria-label="Time range">
+            <button class="range-btn active" data-range="1M">1M</button>
+            <button class="range-btn" data-range="3M">3M</button>
+            <button class="range-btn" data-range="1Y">1Y</button>
+          </div>
+        </div>
+        <div class="chart-box">
+          <div id="fin-tip" class="chart-tip" hidden></div>
+          <svg id="fin-chart" class="line-chart" role="img"></svg>
+        </div>
+        <div class="month-row">
+          <div><span class="muted small">Added this month</span><b id="fin-month-added">–</b></div>
+          <div><span class="muted small">Spent this month</span><b id="fin-month-spent">–</b></div>
+        </div>
+      </section>
+
+      <h2 class="section-title">History</h2>
+      <div id="fin-history"></div>
+
+      <!-- Add / spend / move form -->
+      <div id="fin-sheet" class="sheet-backdrop" hidden>
+        <form id="fin-sheet-form" class="sheet" autocomplete="off">
+          <h3 id="fin-sheet-title">Add</h3>
+          <label class="field">
+            <span>Amount (RON)</span>
+            <input id="fin-amount" inputmode="decimal" placeholder="0.00" enterkeyhint="next">
+          </label>
+          <p id="fin-sheet-hint" class="muted small"></p>
+          <label class="field">
+            <span>Note</span>
+            <input id="fin-note" maxlength="200" enterkeyhint="done">
+          </label>
+          <label class="field">
+            <span>Date</span>
+            <input id="fin-date" type="date">
+          </label>
+          <p id="fin-sheet-error" class="error"></p>
+          <div class="sheet-buttons">
+            <button type="button" id="fin-sheet-cancel" class="sheet-cancel">Cancel</button>
+            <button type="submit" id="fin-sheet-submit" class="sheet-submit">Add</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- ===== Profile tab ===== -->
     <div id="tab-profile" hidden>
       <section class="card profile-card">
@@ -150,7 +243,7 @@
 
       <h2 class="section-title">Your data</h2>
       <section class="card menu">
-        <button id="export-btn" class="menu-row">Download backup<span class="muted small">Tasks + journal, as a file</span></button>
+        <button id="export-btn" class="menu-row">Download backup<span class="muted small">Tasks, journal and finance, as a file</span></button>
         <button id="import-btn" class="menu-row">Restore backup<span class="muted small">Never overwrites what you wrote</span></button>
         <button id="signout-btn" class="menu-row danger">Sign out</button>
       </section>
@@ -166,6 +259,10 @@
       <button class="nav-btn" data-tab="journal">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5m0-15v15m0 0A1.5 1.5 0 0 0 6.5 21H19M9 7h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Journal</span>
+      </button>
+      <button class="nav-btn" data-tab="finance">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3M4 7.5V17a2 2 0 0 0 2 2h14V8H6.5A2.5 2.5 0 0 1 4 7.5zM16 13.5h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Finance</span>
       </button>
       <button class="nav-btn" data-tab="profile">
         <svg id="nav-profile-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>

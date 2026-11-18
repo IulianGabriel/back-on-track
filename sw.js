@@ -1,10 +1,10 @@
 // Service worker: lets the app open even without internet.
 // App files: always try the network first (so you get updates), fall back to the saved copy.
 // Firebase library files: they never change for a given version, so use the saved copy.
-const CACHE = 'on-track-v6';
+const CACHE = 'on-track-v7';
 const APP_FILES = [
   './', 'index.html', 'styles.css', 'app.js', 'db.js', 'firebase-config.js',
-  'util.js', 'tasks.js', 'journal.js', 'profile.js',
+  'util.js', 'tasks.js', 'journal.js', 'finance.js', 'profile.js',
   'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',
 ];
 
