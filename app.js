@@ -101,7 +101,7 @@ window.addEventListener('focus', checkForNewDay);
 $('#export-btn').addEventListener('click', async () => {
   try {
     const data = {
-      app: 'check-it',
+      app: 'on-track',
       version: 2,
       exportedAt: new Date().toISOString(),
       tasks: tasks.getTasks().map(({ createdAt, ...t }) => t),
@@ -110,7 +110,7 @@ $('#export-btn').addEventListener('click', async () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `check-it-backup-${romanianDate()}.json`;
+    a.download = `on-track-backup-${romanianDate()}.json`;
     document.body.append(a);
     a.click();
     a.remove();

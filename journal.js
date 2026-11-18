@@ -257,7 +257,9 @@ async function loadRecent(more = false) {
     state.recent = more ? [...(state.recent || []), ...items] : items;
     state.hasMore = page.length === size;
   } catch (err) {
-    reportError(err);
+    console.error(err);
+    if (!state.recent) state.recent = [];
+    state.recentError = true;
   } finally {
     state.loadingRecent = false;
     renderRecent();
@@ -291,6 +293,12 @@ function renderRecent() {
   const list = $('#journal-list');
   if (!state.recent) {
     list.innerHTML = `<p class="empty">${state.loadingRecent ? 'Loading your entries…' : ''}</p>`;
+    return;
+  }
+  if (state.recentError) {
+    state.recentError = false;
+    list.innerHTML = '<p class="empty">Couldn\'t load past entries right now. Try again in a minute.</p>';
+    state.recent = null;
     return;
   }
   if (!state.recent.length) {

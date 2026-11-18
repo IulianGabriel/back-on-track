@@ -1,6 +1,6 @@
 {
-  "name": "Check It",
-  "short_name": "Check It",
+  "name": "On Track",
+  "short_name": "On Track",
   "description": "Daily checklists and a journal to get my life back on track.",
   "start_url": "./",
   "scope": "./",

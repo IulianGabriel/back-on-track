@@ -1,0 +1,10 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "journal",
+      "queryScope": "COLLECTION",
+      "fields": [{ "fieldPath": "__name__", "order": "DESCENDING" }]
+    }
+  ],
+  "fieldOverrides": []
+}
