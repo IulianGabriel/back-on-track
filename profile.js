@@ -1,7 +1,7 @@
 // The Profile tab: your name and photo, a few stats, backups and sign-out.
 import * as store from './db.js';
 import * as tasks from './tasks.js';
-import { $, romanianDate, addDays, formatDate, toast, reportError } from './util.js';
+import { $, romanianDate, dayOf, addDays, formatDate, toast, reportError } from './util.js';
 
 const PHOTO_SIZE = 256;   // profile photos are shrunk to 256×256 so they're tiny to store
 
@@ -132,7 +132,7 @@ async function loadStats() {
 // and doesn't break the streak while it's still in progress.
 function perfectDayStreak(daily, today) {
   const items = daily.map((t) => ({
-    since: t.createdAt?.toDate ? romanianDate(t.createdAt.toDate()) : today,
+    since: t.createdAt?.toDate ? dayOf(t.createdAt.toDate()) : today,
     log: new Set(t.log || []),
   }));
   const perfect = (d) => {

@@ -4,7 +4,7 @@ import * as store from './db.js';
 import { $, romanianDate, addDays, formatDate, toast, reportError } from './util.js';
 
 const PAGE = 20;                          // history entries per page
-const RANGES = { '1M': 30, '3M': 90, '1Y': 365 };
+const RANGES = { '7D': 7, '1M': 30, '3M': 90, '1Y': 365 };
 const COLORS = { card: '#5b8fd9', cash: '#3f9b62' };   // checked for colour-blind safety on the dark background
 const SVG = 'http://www.w3.org/2000/svg';
 

@@ -3,10 +3,11 @@ import * as store from './db.js';
 import * as tasks from './tasks.js';
 import * as journal from './journal.js';
 import * as finance from './finance.js';
+import * as achievements from './achievements.js';
 import * as profile from './profile.js';
 import { $, romanianDate, toast, reportError } from './util.js';
 
-const TABS = ['tasks', 'journal', 'finance', 'profile'];
+const TABS = ['tasks', 'journal', 'finance', 'achievements', 'profile'];
 
 // ---------- Screens ----------
 
@@ -20,6 +21,7 @@ store.onUserChanged((user) => {
   tasks.stop();
   journal.stop();
   finance.stop();
+  achievements.stop();
   profile.stop();
 
   if (!user) {
@@ -35,6 +37,7 @@ store.onUserChanged((user) => {
   tasks.start(user.uid);
   journal.start(user.uid);
   finance.start(user.uid);
+  achievements.start(user.uid);
   profile.start(user);
   showTab(currentTab());
 });
@@ -110,11 +113,12 @@ $('#export-btn').addEventListener('click', async () => {
   try {
     const data = {
       app: 'on-track',
-      version: 3,
+      version: 4,
       exportedAt: new Date().toISOString(),
       tasks: tasks.getTasks().map(({ createdAt, ...t }) => t),
       journal: await journal.getAllEntries(),
       finance: await finance.getAllEntries(),
+      achievements: await achievements.getAll(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -150,13 +154,21 @@ $('#import-file').addEventListener('change', async (e) => {
         && ['card', 'cash'].includes(t.account) && Number.isInteger(t.amount) && t.amount > 0
         && /^\d{4}-\d{2}-\d{2}$/.test(t.date) && typeof t.key === 'string',
     ).map(({ id, type, account, amount, note, date, at, key }) => ({ id, type, account, amount, note: note || '', date, at: at || 0, key }));
-    if (!backupTasks.length && !backupJournal.length && !backupFinance.length) throw new Error('Nothing to restore in that file.');
+    const ach = data.achievements || {};
+    const backupCategories = (ach.categories || []).filter((c) => c && typeof c.id === 'string' && typeof c.name === 'string')
+      .map(({ id, name, emoji, order }) => ({ id, name, emoji: emoji || '', order: Number(order) || 0 }));
+    const backupAchievements = (ach.achievements || []).filter((a) => a && typeof a.id === 'string' && typeof a.title === 'string'
+      && typeof a.categoryId === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(a.date))
+      .map(({ id, title, date, categoryId, description }) => ({ id, title, date, categoryId, description: description || '' }));
+    if (!backupTasks.length && !backupJournal.length && !backupFinance.length && !backupAchievements.length && !backupCategories.length) {
+      throw new Error('Nothing to restore in that file.');
+    }
 
     // Never overwrite a journal entry that already has text in the app.
     const current = new Map((await journal.getAllEntries()).map((j) => [j.date, j.text]));
     const journalToRestore = backupJournal.filter((j) => !(current.get(j.date) || '').trim());
 
-    if (!confirm(`Restore from this backup?\n\n• ${backupTasks.length} task(s)\n• ${journalToRestore.length} journal entr${journalToRestore.length === 1 ? 'y' : 'ies'}\n• finance entries that are missing (out of ${backupFinance.length})\n\nNothing already in the app is deleted, and journal entries you've already written are never replaced.`)) return;
+    if (!confirm(`Restore from this backup?\n\n• ${backupTasks.length} task(s)\n• ${journalToRestore.length} journal entr${journalToRestore.length === 1 ? 'y' : 'ies'}\n• finance entries that are missing (out of ${backupFinance.length})\n• achievements that are missing (out of ${backupAchievements.length})\n\nNothing already in the app is deleted, and journal entries you've already written are never replaced.`)) return;
 
     if (backupTasks.length) {
       await store.importTasks(uid, backupTasks.map((t) => ({
@@ -169,6 +181,9 @@ $('#import-file').addEventListener('change', async (e) => {
       await store.importFinance(uid, backupFinance);
       finance.start(uid);
       if (currentTab() === 'finance') finance.onShow();
+    }
+    if (backupCategories.length || backupAchievements.length) {
+      await store.importAchievements(uid, { categories: backupCategories, achievements: backupAchievements });
     }
     toast('Backup restored.');
     if (journalToRestore.length) { journal.start(uid); if (currentTab() === 'journal') journal.onShow(); }

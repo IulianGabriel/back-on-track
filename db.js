@@ -221,6 +221,55 @@ export async function importFinance(uid, entries) {
   return fresh.length;
 }
 
+// ---------- Achievements ----------
+// users/{uid}/achievementCategories/{id}: { name, emoji, createdAt }
+// users/{uid}/achievements/{id}:          { title, date, categoryId, description, createdAt }
+
+const categoriesCol = (uid) => collection(db, 'users', uid, 'achievementCategories');
+const achievementsCol = (uid) => collection(db, 'users', uid, 'achievements');
+const plain = (d) => { const { createdAt, ...data } = d.data(); return { id: d.id, ...data }; };
+
+// Live updates for both lists; calls back with { categories, achievements } whenever either changes.
+export function watchAchievements(uid, onChange, onError) {
+  const latest = { categories: null, achievements: null };
+  const send = () => { if (latest.categories && latest.achievements) onChange({ ...latest }); };
+  const stopCats = onSnapshot(categoriesCol(uid), (s) => { latest.categories = s.docs.map(plain); send(); }, onError);
+  const stopAch = onSnapshot(achievementsCol(uid), (s) => { latest.achievements = s.docs.map(plain); send(); }, onError);
+  return () => { stopCats(); stopAch(); };
+}
+
+export function saveCategory(uid, { id, ...data }, isNew = false) {
+  return setDoc(doc(categoriesCol(uid), id), isNew ? { ...data, createdAt: serverTimestamp() } : data, { merge: true });
+}
+export const deleteCategory = (uid, id) => deleteDoc(doc(categoriesCol(uid), id));
+
+export function saveAchievement(uid, { id, ...data }, isNew = false) {
+  return setDoc(doc(achievementsCol(uid), id), isNew ? { ...data, createdAt: serverTimestamp() } : data, { merge: true });
+}
+export const deleteAchievement = (uid, id) => deleteDoc(doc(achievementsCol(uid), id));
+
+export async function getAllAchievements(uid) {
+  const [cats, ach] = await Promise.all([getDocs(categoriesCol(uid)), getDocs(achievementsCol(uid))]);
+  return { categories: cats.docs.map(plain), achievements: ach.docs.map(plain) };
+}
+
+// Restore: only adds categories/achievements that aren't in the app yet (never overwrites).
+export async function importAchievements(uid, { categories, achievements }) {
+  const current = await getAllAchievements(uid);
+  const haveCat = new Set(current.categories.map((c) => c.id));
+  const haveAch = new Set(current.achievements.map((a) => a.id));
+  const writes = [
+    ...categories.filter((c) => !haveCat.has(c.id)).map(({ id, ...d }) => [doc(categoriesCol(uid), id), d]),
+    ...achievements.filter((a) => !haveAch.has(a.id)).map(({ id, ...d }) => [doc(achievementsCol(uid), id), d]),
+  ];
+  for (let i = 0; i < writes.length; i += 400) {
+    const batch = writeBatch(db);
+    writes.slice(i, i + 400).forEach(([ref, data]) => batch.set(ref, data));
+    await batch.commit();
+  }
+  return writes.length;
+}
+
 // ---------- Profile ----------
 
 const profileDoc = (uid) => doc(db, 'users', uid, 'meta', 'profile');

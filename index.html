@@ -75,7 +75,7 @@
         </form>
       </section>
 
-      <p class="muted small note">Checkmarks reset every night at 00:00, Romanian time.</p>
+      <p class="muted small note">Checkmarks reset every night at 4:00 AM, Romanian time.</p>
 
     </div>
 
@@ -170,6 +170,7 @@
         <div class="card-head">
           <h2>Savings over time</h2>
           <div class="ranges" role="group" aria-label="Time range">
+            <button class="range-btn" data-range="7D">7D</button>
             <button class="range-btn active" data-range="1M">1M</button>
             <button class="range-btn" data-range="3M">3M</button>
             <button class="range-btn" data-range="1Y">1Y</button>
@@ -214,6 +215,68 @@
       </div>
     </div>
 
+    <!-- ===== Achievements tab ===== -->
+    <div id="tab-achievements" hidden>
+      <header class="topbar">
+        <div class="headline">
+          <div class="today">Achievements</div>
+          <div id="ach-subtitle" class="muted small"></div>
+        </div>
+      </header>
+      <div class="progress"></div>
+
+      <div class="ach-actions">
+        <button id="ach-add-btn" class="ach-primary">+ Achievement</button>
+        <button id="cat-add-btn" class="ach-secondary">+ Category</button>
+      </div>
+      <div id="ach-list"></div>
+
+      <!-- Achievement form -->
+      <div id="ach-sheet" class="sheet-backdrop" hidden>
+        <form id="ach-form" class="sheet" autocomplete="off">
+          <h3 id="ach-sheet-title">New achievement</h3>
+          <label class="field"><span>Title</span>
+            <input id="ach-title" maxlength="120" placeholder="What did you achieve?" enterkeyhint="next">
+          </label>
+          <div class="field-row">
+            <label class="field"><span>Date</span><input id="ach-date" type="date"></label>
+            <label class="field"><span>Category</span><select id="ach-category"></select></label>
+          </div>
+          <label class="field"><span>Description</span>
+            <textarea id="ach-description" rows="4" maxlength="2000" placeholder="How did it happen? How did it feel? (optional)"></textarea>
+          </label>
+          <p id="ach-sheet-error" class="error"></p>
+          <div class="sheet-buttons">
+            <button type="button" id="ach-cancel" class="sheet-cancel">Cancel</button>
+            <button type="submit" class="sheet-submit">Save</button>
+          </div>
+          <button type="button" id="ach-delete" class="delete-link center-link" hidden>Delete achievement</button>
+        </form>
+      </div>
+
+      <!-- Category form -->
+      <div id="cat-sheet" class="sheet-backdrop" hidden>
+        <form id="cat-form" class="sheet" autocomplete="off">
+          <h3 id="cat-sheet-title">New category</h3>
+          <div class="field-row emoji-row">
+            <label class="field emoji-field"><span>Emoji</span>
+              <input id="cat-emoji" maxlength="16" placeholder="🙂" aria-label="Emoji (optional)">
+            </label>
+            <label class="field"><span>Name</span>
+              <input id="cat-name" maxlength="40" placeholder="e.g. Gaming, Health, School" enterkeyhint="done">
+            </label>
+          </div>
+          <div id="cat-emoji-picks" class="emoji-picks" aria-label="Quick emoji"></div>
+          <p id="cat-sheet-error" class="error"></p>
+          <div class="sheet-buttons">
+            <button type="button" id="cat-cancel" class="sheet-cancel">Cancel</button>
+            <button type="submit" class="sheet-submit">Save</button>
+          </div>
+          <button type="button" id="cat-delete" class="delete-link center-link" hidden>Delete category</button>
+        </form>
+      </div>
+    </div>
+
     <!-- ===== Profile tab ===== -->
     <div id="tab-profile" hidden>
       <section class="card profile-card">
@@ -252,14 +315,14 @@
       <div class="stats">
         <div class="stat"><div id="stat-streak" class="stat-value">–</div><div class="stat-label">day journal streak</div></div>
         <div class="stat"><div id="stat-entries" class="stat-value">–</div><div class="stat-label">journal entries</div></div>
-        <div class="stat"><div id="stat-perfect" class="stat-value">–</div><div class="stat-label">perfect days in a row</div></div>
+        <div class="stat"><div id="stat-perfect" class="stat-value">–</div><div class="stat-label">days consistently showing up</div></div>
         <div class="stat"><div id="stat-today" class="stat-value">–</div><div class="stat-label">daily tasks today</div></div>
       </div>
       <p id="member-since" class="muted small note"></p>
 
       <h2 class="section-title">Your data</h2>
       <section class="card menu">
-        <button id="export-btn" class="menu-row">Download backup<span class="muted small">Tasks, journal and finance, as a file</span></button>
+        <button id="export-btn" class="menu-row">Download backup<span class="muted small">Everything in the app, as a file</span></button>
         <button id="import-btn" class="menu-row">Restore backup<span class="muted small">Never overwrites what you wrote</span></button>
         <button id="signout-btn" class="menu-row danger">Sign out</button>
       </section>
@@ -279,6 +342,10 @@
       <button class="nav-btn" data-tab="finance">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3M4 7.5V17a2 2 0 0 0 2 2h14V8H6.5A2.5 2.5 0 0 1 4 7.5zM16 13.5h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Finance</span>
+      </button>
+      <button class="nav-btn" data-tab="achievements">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Achievements</span>
       </button>
       <button class="nav-btn" data-tab="profile">
         <svg id="nav-profile-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>

@@ -4,14 +4,21 @@ export const TIME_ZONE = 'Europe/Bucharest';
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 
-// A date in Romania as "YYYY-MM-DD" (today by default).
-export function romanianDate(when = new Date()) {
+// Your day starts at 4:00 AM Romanian time, not at midnight, so tasks done after midnight
+// still count for the evening before. Change this number to move the reset time.
+export const DAY_START_HOUR = 4;
+
+// A date in Romania as "YYYY-MM-DD". With no argument: today, where "today" starts at 4:00 AM.
+export function romanianDate(when = new Date(Date.now() - DAY_START_HOUR * 3600_000)) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
   }).formatToParts(when);
   const get = (type) => parts.find((p) => p.type === type).value;
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
+
+// Which of "your days" a moment belongs to (a moment at 2:00 AM belongs to the day before).
+export const dayOf = (date) => romanianDate(new Date(date.getTime() - DAY_START_HOUR * 3600_000));
 
 // "YYYY-MM-DD" plus/minus a number of days.
 export function addDays(ymd, days) {
