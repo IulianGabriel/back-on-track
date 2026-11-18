@@ -89,6 +89,9 @@ for (const btn of document.querySelectorAll('.nav-btn')) {
 }
 window.addEventListener('hashchange', () => showTab(currentTab()));
 
+// The savings card on the Profile tab opens Finance.
+$('#pf-savings').addEventListener('click', () => $('.nav-btn[data-tab="finance"]').click());
+
 // ---------- Midnight (Romanian time) ----------
 // Check every 20 seconds, and whenever the app comes back to the screen.
 

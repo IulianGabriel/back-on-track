@@ -274,6 +274,8 @@ h2 .sub { font-weight: 400; font-size: 13px; margin-left: 4px; }
 .negative { color: var(--danger) !important; }
 .fin-hero { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 16px; }
 .fin-hero-text { min-width: 0; }
+.fin-hero.as-link { width: 100%; text-align: left; color: inherit; font: inherit; cursor: pointer; margin-bottom: 4px; }
+.fin-hero.as-link:hover { border-color: var(--faint); }
 .fin-total { font-size: 30px; font-weight: 650; letter-spacing: -.02em; margin: 2px 0 10px; }
 .legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 .legend li { display: flex; align-items: center; gap: 8px; }

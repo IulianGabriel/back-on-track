@@ -33,7 +33,14 @@ export function formatMoney(bani, { sign = false } = {}) {
 
 // "5", "5.5", "0,04", "1 234.50" → bani. Returns null if it isn't a valid positive amount.
 function parseAmount(text) {
-  const s = text.trim().replace(/\s/g, '').replace(',', '.');
+  let s = text.trim().replace(/\s/g, '');
+  if (s.includes(',') && s.includes('.')) {
+    // Both used, e.g. "1,234.50" or "1.234,50": the last one is the decimal point.
+    const dec = s.lastIndexOf(',') > s.lastIndexOf('.') ? ',' : '.';
+    s = s.split(dec === ',' ? '.' : ',').join('').replace(',', '.');
+  } else {
+    s = s.replace(',', '.');
+  }
   if (!/^\d+(\.\d{0,2})?$|^\.\d{1,2}$/.test(s)) return null;
   const bani = Math.round(parseFloat(s) * 100);
   return bani > 0 ? bani : null;
@@ -74,11 +81,14 @@ export function onShow() {
   else renderChart();
 }
 
+let lastDay = romanianDate();
 export function checkForNewDay() {
-  if (state.chartTx && state.points.length && state.points[state.points.length - 1].date !== romanianDate()) {
-    state.chartTx = null;
-    if (state.shown && !$('#tab-finance').hidden) loadChart();
-  }
+  const today = romanianDate();
+  if (today === lastDay) return;
+  lastDay = today;
+  if (state.history) renderHistory();          // "Today" becomes "Yesterday"
+  state.chartTx = null;                         // the chart moves one day on
+  if (state.shown && !$('#tab-finance').hidden) loadChart();
 }
 
 export const getAllEntries = () => store.getAllFinance(state.uid);
@@ -87,20 +97,27 @@ export const getAllEntries = () => store.getAllFinance(state.uid);
 
 function renderTotals() {
   const { card, cash } = state.totals;
-  const total = card + cash;
-  $('#fin-total').textContent = state.totalsLoaded ? formatMoney(total) : '…';
-  $('#fin-total').classList.toggle('negative', total < 0);
   $('#fin-card').textContent = formatMoney(card);
   $('#fin-cash').textContent = formatMoney(cash);
   $('#fin-card').classList.toggle('negative', card < 0);
   $('#fin-cash').classList.toggle('negative', cash < 0);
-  $('#legend-card').textContent = formatMoney(card);
-  $('#legend-cash').textContent = formatMoney(cash);
-  renderDonut(Math.max(card, 0), Math.max(cash, 0));
+  renderHero('fin');   // Finance tab
+  renderHero('pf');    // the same card on the Profile tab
 }
 
-function renderDonut(card, cash) {
-  const svg = $('#fin-donut');
+function renderHero(prefix) {
+  const { card, cash } = state.totals;
+  const total = card + cash;
+  const totalEl = $(`#${prefix}-total`);
+  totalEl.textContent = state.totalsLoaded ? formatMoney(total) : '…';
+  totalEl.classList.toggle('negative', total < 0);
+  $(`#${prefix}-legend-card`).textContent = formatMoney(card);
+  $(`#${prefix}-legend-cash`).textContent = formatMoney(cash);
+  renderDonut(prefix, Math.max(card, 0), Math.max(cash, 0));
+}
+
+function renderDonut(prefix, card, cash) {
+  const svg = $(`#${prefix}-donut`);
   svg.replaceChildren();
   const r = 42, c = 2 * Math.PI * r, sum = card + cash;
   const ring = (color, len, offset, title) => {
@@ -120,7 +137,7 @@ function renderDonut(card, cash) {
     if (cash > 0) ring(COLORS.cash, Math.max(c - cardLen - gap, 0.5), cardLen, `Cash: ${formatMoney(cash)}`);
   }
   const pct = sum > 0 ? Math.round((card / sum) * 100) : null;
-  $('#fin-donut-label').innerHTML = pct === null ? '' : `<b>${pct}%</b><span>on card</span>`;
+  $(`#${prefix}-donut-label`).innerHTML = pct === null ? '' : `<b>${pct}%</b><span>on card</span>`;
 }
 
 // ---------- Add / spend / move ----------

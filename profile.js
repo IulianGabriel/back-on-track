@@ -115,9 +115,8 @@ async function loadStats() {
   // From your tasks (already on the device).
   const all = tasks.getTasks();
   const daily = all.filter((t) => t.section === 'daily');
-  const checks = all.reduce((sum, t) => sum + (t.log?.length || 0), 0);
   $('#stat-today').textContent = daily.length ? `${daily.filter((t) => t.doneDate === today).length}/${daily.length}` : '–';
-  $('#stat-checks').textContent = checks.toLocaleString('en-GB');
+  $('#stat-perfect').textContent = perfectDayStreak(daily, today);
 
   // From your journal.
   try {
@@ -126,6 +125,23 @@ async function loadStats() {
   try {
     $('#stat-streak').textContent = await journalStreak(uid, today);
   } catch { $('#stat-streak').textContent = '–'; }
+}
+
+// Days in a row on which every daily task was checked. A task only counts from the day it was
+// added, so adding a new task never breaks an existing streak. Today counts once it's complete,
+// and doesn't break the streak while it's still in progress.
+function perfectDayStreak(daily, today) {
+  const items = daily.map((t) => ({
+    since: t.createdAt?.toDate ? romanianDate(t.createdAt.toDate()) : today,
+    log: new Set(t.log || []),
+  }));
+  const perfect = (d) => {
+    const active = items.filter((t) => t.since <= d);
+    return active.length > 0 && active.every((t) => t.log.has(d));
+  };
+  let streak = perfect(today) ? 1 : 0;
+  for (let d = addDays(today, -1); perfect(d) && streak < 3650; d = addDays(d, -1)) streak++;
+  return streak;
 }
 
 // Days in a row you've written in your journal. Today doesn't break the streak until it's over.

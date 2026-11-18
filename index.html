@@ -136,8 +136,8 @@
           <div class="muted small">Total savings</div>
           <div id="fin-total" class="fin-total">…</div>
           <ul class="legend">
-            <li><span class="swatch swatch-card"></span>Card <b id="legend-card"></b></li>
-            <li><span class="swatch swatch-cash"></span>Cash <b id="legend-cash"></b></li>
+            <li><span class="swatch swatch-card"></span>Card <b id="fin-legend-card"></b></li>
+            <li><span class="swatch swatch-cash"></span>Cash <b id="fin-legend-cash"></b></li>
           </ul>
         </div>
         <div class="donut-wrap">
@@ -232,11 +232,27 @@
         <input id="photo-file" type="file" accept="image/*" hidden>
       </section>
 
+      <h2 class="section-title">Your savings</h2>
+      <button class="card fin-hero as-link" id="pf-savings" aria-label="Open Finance">
+        <div class="fin-hero-text">
+          <div class="muted small">Total savings</div>
+          <div id="pf-total" class="fin-total">…</div>
+          <ul class="legend">
+            <li><span class="swatch swatch-card"></span>Card <b id="pf-legend-card"></b></li>
+            <li><span class="swatch swatch-cash"></span>Cash <b id="pf-legend-cash"></b></li>
+          </ul>
+        </div>
+        <div class="donut-wrap">
+          <svg id="pf-donut" viewBox="0 0 100 100" role="img" aria-label="Split of savings between card and cash"></svg>
+          <div id="pf-donut-label" class="donut-label"></div>
+        </div>
+      </button>
+
       <h2 class="section-title">Your progress</h2>
       <div class="stats">
         <div class="stat"><div id="stat-streak" class="stat-value">–</div><div class="stat-label">day journal streak</div></div>
         <div class="stat"><div id="stat-entries" class="stat-value">–</div><div class="stat-label">journal entries</div></div>
-        <div class="stat"><div id="stat-checks" class="stat-value">–</div><div class="stat-label">checkmarks in total</div></div>
+        <div class="stat"><div id="stat-perfect" class="stat-value">–</div><div class="stat-label">perfect days in a row</div></div>
         <div class="stat"><div id="stat-today" class="stat-value">–</div><div class="stat-label">daily tasks today</div></div>
       </div>
       <p id="member-since" class="muted small note"></p>
