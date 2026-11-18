@@ -1,8 +1,11 @@
-// The Journal tab: one entry per day (Romanian date). Entries are never reset or deleted.
+// The Journal tab: one entry per day (Romanian date). Entries stay forever unless you delete them.
 import * as store from './db.js';
-import { $, romanianDate, formatDate, reportError } from './util.js';
+import { $, romanianDate, addDays, formatDate, toast, reportError } from './util.js';
 
 const SAVE_DELAY_MS = 700;
+const FIRST_PAGE = 7;       // past entries shown at first
+const MORE_PAGE = 14;       // loaded each time you tap "Show older entries"
+const YEARS_BACK = 10;      // how far back "On this day" looks
 
 const state = {
   uid: null,
@@ -13,8 +16,10 @@ const state = {
   saveTimer: null,
   saveSeq: 0,
   unsubscribe: null,
-  entries: null,        // all entries [{date, text}], newest first; loaded when the tab opens
-  loadingEntries: false,
+  recent: null,         // loaded past entries [{date, text}], newest first
+  hasMore: false,
+  loadingRecent: false,
+  onThisDay: [],
 };
 
 const textarea = $('#journal-text');
@@ -22,7 +27,7 @@ const textarea = $('#journal-text');
 export function start(uid) {
   stop();
   state.uid = uid;
-  state.entries = null;
+  state.recent = null;
   openDate(romanianDate());
 }
 
@@ -36,7 +41,7 @@ export function stop() {
 // Called when the Journal tab becomes visible.
 export function onShow() {
   if (!state.uid) return;
-  if (!state.entries && !state.loadingEntries) loadEntries();
+  if (!state.recent && !state.loadingRecent) loadRecent();
   autoGrow();
 }
 
@@ -50,6 +55,8 @@ export function checkForNewDay() {
   if (now === state.today) return;
   const wasViewingToday = state.viewDate === state.today;
   state.today = now;
+  state.recent = null;          // yesterday's entry is now a "past" entry
+  if (!$('#tab-journal').hidden) loadRecent();
   // Move to the new day, unless you're in the middle of writing.
   if (wasViewingToday && !state.dirty && document.activeElement !== textarea) openDate(now);
   else renderHeader();
@@ -58,6 +65,7 @@ export function checkForNewDay() {
 // ---------- Editor ----------
 
 function openDate(date) {
+  if (date > state.today) date = state.today;
   flush();
   if (state.unsubscribe) state.unsubscribe();
   state.viewDate = date;
@@ -67,8 +75,9 @@ function openDate(date) {
   textarea.disabled = true;
   setStatus('Loading…');
   renderHeader();
-  renderOnThisDay();
-  renderList();
+  renderRecent();
+  updateDeleteButton();
+  loadOnThisDay(date);
 
   // Don't let you type until we know what's already saved for this day, so nothing
   // you wrote earlier (maybe on another device) can be overwritten by accident.
@@ -76,14 +85,12 @@ function openDate(date) {
   const uid = state.uid;
   state.unsubscribe = store.watchJournalEntry(uid, date, (text, { fromCache }) => {
     if (state.viewDate !== date || state.uid !== uid) return;
-    if (!state.dirty) {
-      if (textarea.value !== text) { textarea.value = text; autoGrow(); }
-      updateLocalEntry(date, text);
-    }
+    if (!state.dirty && textarea.value !== text) { textarea.value = text; autoGrow(); }
     if (!state.ready && (!fromCache || text)) {
       clearTimeout(offlineFallback);
       enableEditor(text ? 'Saved' : '');
     }
+    updateDeleteButton();
   }, (err) => { clearTimeout(offlineFallback); reportError(err); });
 }
 
@@ -92,6 +99,7 @@ function enableEditor(status) {
   textarea.disabled = false;
   setStatus(status);
   autoGrow();
+  updateDeleteButton();
 }
 
 textarea.addEventListener('input', () => {
@@ -99,6 +107,7 @@ textarea.addEventListener('input', () => {
   state.dirty = true;
   setStatus('Saving…');
   autoGrow();
+  updateDeleteButton();
   clearTimeout(state.saveTimer);
   state.saveTimer = setTimeout(save, SAVE_DELAY_MS);
 });
@@ -116,12 +125,12 @@ function save() {
   const { uid, viewDate: date } = state;
   const text = textarea.value;
   const seq = ++state.saveSeq;
-  updateLocalEntry(date, text);
+  rememberLocally(date, text);
   if (!navigator.onLine) setStatus('Offline. Saved on this device, will sync later.');
   store.saveJournalEntry(uid, date, text).then(() => {
     if (seq === state.saveSeq && state.viewDate === date) {
       state.dirty = false;
-      setStatus('Saved');
+      setStatus(text.trim() ? 'Saved' : '');
     }
   }).catch(reportError);
 }
@@ -135,6 +144,30 @@ function autoGrow() {
   textarea.style.height = Math.max(textarea.scrollHeight, 220) + 'px';
 }
 
+function updateDeleteButton() {
+  $('#journal-delete').hidden = !(state.ready && textarea.value.trim());
+}
+
+$('#journal-delete').addEventListener('click', async () => {
+  const date = state.viewDate;
+  if (!confirm(`Delete your journal entry for ${formatDate(date)}?\n\nThis can't be undone.`)) return;
+  clearTimeout(state.saveTimer);
+  state.saveTimer = null;
+  state.saveSeq++;
+  state.dirty = false;
+  textarea.value = '';
+  autoGrow();
+  updateDeleteButton();
+  rememberLocally(date, '');
+  try {
+    await store.deleteJournalEntry(state.uid, date);
+    setStatus('');
+    toast('Entry deleted.');
+  } catch (err) { reportError(err); }
+});
+
+// ---------- Moving between days ----------
+
 function renderHeader() {
   const isToday = state.viewDate === state.today;
   $('#journal-date').textContent = isToday ? 'Today' : formatDate(state.viewDate, { weekday: false });
@@ -142,70 +175,66 @@ function renderHeader() {
     ? formatDate(state.viewDate)
     : formatDate(state.viewDate, { day: false, month: false, year: false });
   $('#journal-today-btn').hidden = isToday;
+  $('#journal-next').disabled = isToday;
   textarea.placeholder = isToday
     ? 'How was today? What are you thinking about?'
-    : 'Nothing was written on this day.';
+    : 'Nothing written on this day. You can still write something.';
 }
 
-$('#journal-today-btn').addEventListener('click', () => {
-  openDate(state.today);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+const goTo = (date) => openDate(date);
+
+$('#journal-prev').addEventListener('click', () => goTo(addDays(state.viewDate, -1)));
+$('#journal-next').addEventListener('click', () => goTo(addDays(state.viewDate, +1)));
+$('#journal-today-btn').addEventListener('click', () => goTo(state.today));
+
+// ← → keys on a computer (only when you're not typing).
+document.addEventListener('keydown', (e) => {
+  if ($('#tab-journal').hidden || e.altKey || e.ctrlKey || e.metaKey) return;
+  const el = document.activeElement;
+  if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')) return;
+  if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(addDays(state.viewDate, -1)); }
+  if (e.key === 'ArrowRight' && state.viewDate < state.today) { e.preventDefault(); goTo(addDays(state.viewDate, +1)); }
 });
 
 $('#journal-goto').addEventListener('change', (e) => {
   const date = e.target.value;
   if (!date) return;
   e.target.value = '';
-  openDate(date > state.today ? state.today : date);
+  e.target.blur();
+  goTo(date);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
-// ---------- Past entries ----------
+// ---------- On this day (same date, earlier years) ----------
 
-async function loadEntries() {
-  state.loadingEntries = true;
-  renderList();
-  try {
-    const loaded = await store.getJournal(state.uid);
-    // Keep anything typed locally since the load started.
-    const local = new Map((state.entries || []).map((e) => [e.date, e]));
-    state.entries = loaded.map((e) => local.get(e.date) || e);
-    for (const [date, e] of local) if (!state.entries.some((x) => x.date === date)) state.entries.push(e);
-    state.entries.sort((a, b) => b.date.localeCompare(a.date));
-  } catch (err) {
-    reportError(err);
-  } finally {
-    state.loadingEntries = false;
-    renderOnThisDay();
-    renderList();
+async function loadOnThisDay(date) {
+  state.onThisDay = [];
+  renderOnThisDay();
+  const year = Number(date.slice(0, 4));
+  const dates = [];
+  for (let y = year - 1; y >= year - YEARS_BACK; y--) {
+    const d = `${y}${date.slice(4)}`;
+    if (addDays(d, 0) === d) dates.push(d);   // skips 29 February in non-leap years
   }
+  try {
+    const found = await store.getJournalDays(state.uid, dates);
+    if (state.viewDate !== date) return;
+    state.onThisDay = found;
+    renderOnThisDay();
+  } catch (err) { console.warn('On this day failed', err); }
 }
 
-function updateLocalEntry(date, text) {
-  if (!state.entries) return;
-  const existing = state.entries.find((e) => e.date === date);
-  const changed = !existing || existing.text !== text;
-  if (existing) existing.text = text;
-  else { state.entries.push({ date, text }); state.entries.sort((a, b) => b.date.localeCompare(a.date)); }
-  if (changed) { clearTimeout(updateLocalEntry.t); updateLocalEntry.t = setTimeout(renderList, 400); }
-}
-
-const written = () => (state.entries || []).filter((e) => e.text.trim());
-
-// Entries written on this same day in earlier years.
 function renderOnThisDay() {
   const box = $('#on-this-day');
-  const monthDay = state.viewDate.slice(5);
-  const year = Number(state.viewDate.slice(0, 4));
-  const matches = written().filter((e) => e.date.slice(5) === monthDay && e.date < state.viewDate);
   box.replaceChildren();
-  box.hidden = !matches.length;
-  if (!matches.length) return;
+  box.hidden = !state.onThisDay.length;
+  if (!state.onThisDay.length) return;
   const title = document.createElement('h2');
   title.className = 'section-title';
   title.textContent = 'On this day';
   box.append(title);
-  for (const e of matches) {
+  const year = Number(state.viewDate.slice(0, 4));
+  for (const e of state.onThisDay) {
     const yearsAgo = year - Number(e.date.slice(0, 4));
     const card = entryButton(e, 'memory');
     card.querySelector('.entry-date').textContent =
@@ -214,19 +243,62 @@ function renderOnThisDay() {
   }
 }
 
-function renderList() {
+// ---------- Past entries (only the most recent, more on request) ----------
+
+async function loadRecent(more = false) {
+  if (state.loadingRecent) return;
+  state.loadingRecent = true;
+  renderRecent();
+  try {
+    const size = more ? MORE_PAGE : FIRST_PAGE;
+    const after = more && state.recent?.length ? state.recent[state.recent.length - 1].date : null;
+    const page = await store.getJournalPage(state.uid, { before: state.today, after, size });
+    const items = page.filter((e) => e.text.trim());
+    state.recent = more ? [...(state.recent || []), ...items] : items;
+    state.hasMore = page.length === size;
+  } catch (err) {
+    reportError(err);
+  } finally {
+    state.loadingRecent = false;
+    renderRecent();
+  }
+}
+
+// Keep the lists in step with what you type or delete, without reloading.
+function rememberLocally(date, text) {
+  const memory = state.onThisDay.find((e) => e.date === date);
+  if (memory) {
+    memory.text = text;
+    state.onThisDay = state.onThisDay.filter((e) => e.text.trim());
+    renderOnThisDay();
+  }
+  if (!state.recent || date >= state.today) return;
+  const i = state.recent.findIndex((e) => e.date === date);
+  if (!text.trim()) { if (i >= 0) state.recent.splice(i, 1); }
+  else if (i >= 0) state.recent[i].text = text;
+  else {
+    const oldest = state.recent[state.recent.length - 1]?.date;
+    if (!state.hasMore || !oldest || date > oldest) {
+      state.recent.push({ date, text });
+      state.recent.sort((a, b) => b.date.localeCompare(a.date));
+    }
+  }
+  clearTimeout(rememberLocally.t);
+  rememberLocally.t = setTimeout(renderRecent, 400);
+}
+
+function renderRecent() {
   const list = $('#journal-list');
-  if (!state.entries) {
-    list.innerHTML = `<p class="empty">${state.loadingEntries ? 'Loading your entries…' : ''}</p>`;
+  if (!state.recent) {
+    list.innerHTML = `<p class="empty">${state.loadingRecent ? 'Loading your entries…' : ''}</p>`;
     return;
   }
-  const entries = written().filter((e) => e.date < state.today); // today is the editor above
-  if (!entries.length) {
+  if (!state.recent.length) {
     list.innerHTML = '<p class="empty">Your past entries will appear here.</p>';
     return;
   }
   const groups = new Map();
-  for (const e of entries) {
+  for (const e of state.recent) {
     const key = e.date.slice(0, 7);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(e);
@@ -240,6 +312,15 @@ function renderList() {
     card.className = 'card entries';
     card.append(...items.map((e) => entryButton(e)));
     nodes.push(h, card);
+  }
+  if (state.hasMore) {
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'more-btn';
+    more.textContent = state.loadingRecent ? 'Loading…' : 'Show older entries';
+    more.disabled = state.loadingRecent;
+    more.addEventListener('click', () => loadRecent(true));
+    nodes.push(more);
   }
   list.replaceChildren(...nodes);
 }
@@ -256,7 +337,7 @@ function entryButton(entry, extraClass = '') {
   preview.textContent = entry.text.trim();
   b.append(date, preview);
   b.addEventListener('click', () => {
-    openDate(entry.date);
+    goTo(entry.date);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
   return b;

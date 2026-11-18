@@ -2,9 +2,10 @@
 import * as store from './db.js';
 import * as tasks from './tasks.js';
 import * as journal from './journal.js';
+import * as profile from './profile.js';
 import { $, romanianDate, toast, reportError } from './util.js';
 
-const TABS = ['tasks', 'journal'];
+const TABS = ['tasks', 'journal', 'profile'];
 
 // ---------- Screens ----------
 
@@ -17,6 +18,7 @@ function show(id) {
 store.onUserChanged((user) => {
   tasks.stop();
   journal.stop();
+  profile.stop();
 
   if (!user) {
     show('login');
@@ -27,10 +29,10 @@ store.onUserChanged((user) => {
     return;
   }
 
-  $('#user-label').textContent = `Signed in as ${user.email || user.displayName || 'you'}`;
   show('app');
   tasks.start(user.uid);
   journal.start(user.uid);
+  profile.start(user);
   showTab(currentTab());
 });
 
@@ -70,6 +72,7 @@ function showTab(tab) {
     btn.setAttribute('aria-current', t === tab ? 'page' : 'false');
   }
   if (tab === 'journal') journal.onShow();
+  if (tab === 'profile') profile.onShow();
 }
 
 for (const btn of document.querySelectorAll('.nav-btn')) {
@@ -98,7 +101,7 @@ window.addEventListener('focus', checkForNewDay);
 $('#export-btn').addEventListener('click', async () => {
   try {
     const data = {
-      app: 'back-on-track',
+      app: 'check-it',
       version: 2,
       exportedAt: new Date().toISOString(),
       tasks: tasks.getTasks().map(({ createdAt, ...t }) => t),
@@ -107,7 +110,7 @@ $('#export-btn').addEventListener('click', async () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `back-on-track-backup-${romanianDate()}.json`;
+    a.download = `check-it-backup-${romanianDate()}.json`;
     document.body.append(a);
     a.click();
     a.remove();

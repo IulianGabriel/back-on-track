@@ -1,4 +1,4 @@
-# Back on Track
+# Check It
 
 A personal checklist app (PWA) to rebuild good habits, one step at a time.
 

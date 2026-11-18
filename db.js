@@ -7,8 +7,11 @@
 //   doneDate  – the Romanian date (YYYY-MM-DD) it was last checked, or null
 //   log       – every date it was ever checked (kept for future stats, e.g. "3× this week")
 // users/{yourUserId}/journal/{YYYY-MM-DD}
-//   text      – what you wrote that day (never deleted by the app)
+//   text      – what you wrote that day (only removed if you delete it yourself)
 //   updatedAt – when it was last saved
+// users/{yourUserId}/meta/profile
+//   name      – your username
+//   photo     – your profile photo (a small image, stored as text)
 import { firebaseConfig } from './firebase-config.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js';
 import {
@@ -17,7 +20,8 @@ import {
 } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch, getDocs,
+  collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch, getDocs, getDoc,
+  query, where, orderBy, limit, startAfter, documentId, getCountFromServer,
   arrayUnion, arrayRemove, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js';
 
@@ -99,17 +103,51 @@ export function watchJournalEntry(uid, date, onChange, onError) {
   }, onError);
 }
 
+// Saving an empty entry removes that day, so blank days never clutter the list.
 export function saveJournalEntry(uid, date, text) {
+  if (!text.trim()) return deleteDoc(journalDoc(uid, date));
   return setDoc(journalDoc(uid, date), { text, updatedAt: serverTimestamp() }, { merge: true });
 }
 
-// All entries, as [{ date, text }], newest first.
+export const deleteJournalEntry = (uid, date) => deleteDoc(journalDoc(uid, date));
+
+// A page of entries, newest first: those before `before` (a date), continuing after `after`.
+export async function getJournalPage(uid, { before, after = null, size = 7 }) {
+  const parts = [where(documentId(), '<', before), orderBy(documentId(), 'desc')];
+  if (after) parts.push(startAfter(after));
+  parts.push(limit(size));
+  const snap = await getDocs(query(journalCol(uid), ...parts));
+  return snap.docs.map((d) => ({ date: d.id, text: d.data().text || '' }));
+}
+
+// Specific days only, e.g. "18 November" in earlier years. Days with nothing written are skipped.
+export async function getJournalDays(uid, dates) {
+  const snaps = await Promise.all(dates.map((date) => getDoc(journalDoc(uid, date))));
+  return snaps.filter((s) => s.exists() && (s.data().text || '').trim())
+    .map((s) => ({ date: s.id, text: s.data().text }));
+}
+
+export async function countJournal(uid) {
+  return (await getCountFromServer(journalCol(uid))).data().count;
+}
+
+// Every entry (only used for backups), newest first.
 export async function getJournal(uid) {
   const snap = await getDocs(journalCol(uid));
   return snap.docs
     .map((d) => ({ date: d.id, text: d.data().text || '' }))
     .sort((a, b) => b.date.localeCompare(a.date));
 }
+
+// ---------- Profile ----------
+
+const profileDoc = (uid) => doc(db, 'users', uid, 'meta', 'profile');
+
+export function watchProfile(uid, onChange, onError) {
+  return onSnapshot(profileDoc(uid), (snap) => onChange(snap.exists() ? snap.data() : {}), onError);
+}
+
+export const saveProfile = (uid, fields) => setDoc(profileDoc(uid), fields, { merge: true });
 
 export async function importJournal(uid, entries) {
   for (let i = 0; i < entries.length; i += 400) {

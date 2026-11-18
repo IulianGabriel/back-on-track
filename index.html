@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Back on Track</title>
+  <title>Check It</title>
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0d0e10">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="On Track">
+  <meta name="apple-mobile-web-app-title" content="Check It">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -24,7 +24,7 @@
   <!-- Sign-in screen -->
   <div id="login" class="screen center" hidden>
     <img src="icons/icon-192.png" alt="" class="logo">
-    <h1>Back on Track</h1>
+    <h1>Check It</h1>
     <p class="muted">One step at a time.</p>
     <button id="signin-btn" class="primary">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21.35 11.1H12v2.98h5.35c-.5 2.4-2.6 3.92-5.35 3.92a6 6 0 1 1 3.9-10.56l2.2-2.2A9 9 0 1 0 21 12c0-.3-.02-.6-.05-.9z"/></svg>
@@ -77,31 +77,36 @@
 
       <p class="muted small note">Checkmarks reset every night at 00:00, Romanian time.</p>
 
-      <footer class="settings">
-        <div id="user-label" class="muted small"></div>
-        <div class="settings-buttons">
-          <button id="export-btn" class="link">Download backup</button>
-          <button id="import-btn" class="link">Restore backup</button>
-          <button id="signout-btn" class="link">Sign out</button>
-        </div>
-        <input id="import-file" type="file" accept="application/json,.json" hidden>
-      </footer>
     </div>
 
     <!-- ===== Journal tab ===== -->
     <div id="tab-journal" hidden>
-      <header class="topbar">
+      <header class="topbar day-nav">
+        <button id="journal-prev" class="arrow-btn" aria-label="Previous day" title="Previous day (←)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
         <div class="headline">
           <div id="journal-date" class="today">Today</div>
-          <div id="journal-subtitle" class="muted small"></div>
+          <div class="sub-row">
+            <span id="journal-subtitle" class="muted small"></span>
+            <button id="journal-today-btn" class="today-link" hidden>Back to today</button>
+          </div>
         </div>
-        <button id="journal-today-btn" class="pill" hidden>Today</button>
+        <button id="journal-next" class="arrow-btn" aria-label="Next day" title="Next day (→)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
       </header>
       <div class="progress"></div>
 
       <section class="card journal-card">
         <textarea id="journal-text" rows="8" placeholder="How was today? What are you thinking about?" aria-label="Journal entry"></textarea>
-        <div id="journal-status" class="journal-status"></div>
+        <div class="journal-foot">
+          <button id="journal-delete" class="delete-link" hidden>
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Delete entry
+          </button>
+          <span id="journal-status" class="journal-status"></span>
+        </div>
       </section>
 
       <div id="on-this-day" hidden></div>
@@ -116,6 +121,42 @@
       <div id="journal-list"></div>
     </div>
 
+    <!-- ===== Profile tab ===== -->
+    <div id="tab-profile" hidden>
+      <section class="card profile-card">
+        <button id="avatar" class="avatar big" aria-label="Change profile photo">
+          <img alt="" referrerpolicy="no-referrer" hidden><span class="initial"></span>
+          <span class="avatar-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="14" height="14"><path d="M4 8h3l2-3h6l2 3h3v11H4z M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          </span>
+        </button>
+        <input id="profile-name" class="name-input" placeholder="Your name" maxlength="40" enterkeyhint="done" aria-label="Your name">
+        <div id="profile-email" class="muted small"></div>
+        <div class="photo-actions">
+          <button id="photo-change" class="link">Change photo</button>
+          <button id="photo-reset" class="link" hidden>Use Google photo</button>
+        </div>
+        <input id="photo-file" type="file" accept="image/*" hidden>
+      </section>
+
+      <h2 class="section-title">Your progress</h2>
+      <div class="stats">
+        <div class="stat"><div id="stat-streak" class="stat-value">–</div><div class="stat-label">day journal streak</div></div>
+        <div class="stat"><div id="stat-entries" class="stat-value">–</div><div class="stat-label">journal entries</div></div>
+        <div class="stat"><div id="stat-checks" class="stat-value">–</div><div class="stat-label">checkmarks in total</div></div>
+        <div class="stat"><div id="stat-today" class="stat-value">–</div><div class="stat-label">daily tasks today</div></div>
+      </div>
+      <p id="member-since" class="muted small note"></p>
+
+      <h2 class="section-title">Your data</h2>
+      <section class="card menu">
+        <button id="export-btn" class="menu-row">Download backup<span class="muted small">Tasks + journal, as a file</span></button>
+        <button id="import-btn" class="menu-row">Restore backup<span class="muted small">Never overwrites what you wrote</span></button>
+        <button id="signout-btn" class="menu-row danger">Sign out</button>
+      </section>
+      <input id="import-file" type="file" accept="application/json,.json" hidden>
+    </div>
+
     <!-- ===== Bottom navigation ===== -->
     <nav class="bottom-nav" aria-label="Sections">
       <button class="nav-btn active" data-tab="tasks">
@@ -125,6 +166,11 @@
       <button class="nav-btn" data-tab="journal">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5m0-15v15m0 0A1.5 1.5 0 0 0 6.5 21H19M9 7h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Journal</span>
+      </button>
+      <button class="nav-btn" data-tab="profile">
+        <svg id="nav-profile-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span id="nav-avatar" class="avatar small" hidden><img alt="" referrerpolicy="no-referrer" hidden><span class="initial"></span></span>
+        <span>Profile</span>
       </button>
     </nav>
   </div>

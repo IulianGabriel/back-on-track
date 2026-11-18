@@ -13,6 +13,12 @@ export function romanianDate(when = new Date()) {
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
+// "YYYY-MM-DD" plus/minus a number of days.
+export function addDays(ymd, days) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
 // "YYYY-MM-DD" → readable text, e.g. "Wednesday 18 November 2026".
 // Pass false for a part to leave it out, e.g. { year: false }.
 export function formatDate(ymd, { weekday = 'long', day = 'numeric', month = 'long', year = 'numeric' } = {}) {
