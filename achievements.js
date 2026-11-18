@@ -334,6 +334,9 @@ async function togglePicker(open = $('#emoji-picker').hidden) {
       return b;
     }));
     buildSections();
+    jumpTo(activeGroup);
+    if ($('#emoji-search').value) runSearch();   // you started typing while the list was loading
+    return;
   }
   jumpTo(activeGroup);
 }
@@ -346,15 +349,15 @@ $('#emoji-grid').addEventListener('click', (e) => {
 });
 
 // Type to search by name, or paste/type an emoji to use it directly.
-$('#emoji-search').addEventListener('input', (e) => {
-  const text = e.target.value;
+function runSearch() {
+  const text = $('#emoji-search').value;
   const pasted = firstEmoji(text);
   if (pasted) {
     setPicked(pasted);
     togglePicker(false);
     return;
   }
-  if (!emojiGroups) return;
+  if (!emojiGroups) return;              // still loading: runs again as soon as the list arrives
   const q = text.trim().toLowerCase();
   const results = $('#emoji-results');
   if (!q) { results.hidden = true; return; }
@@ -365,7 +368,8 @@ $('#emoji-search').addEventListener('input', (e) => {
   for (let n = 0; n < Math.min(found.length, 400); n += CHUNK) results.append(makeBlock(found.slice(n, Math.min(n + CHUNK, 400))));
   results.hidden = false;
   results.scrollTop = 0;
-});
+}
+$('#emoji-search').addEventListener('input', runSearch);
 $('#emoji-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
 
 $('#cat-emoji-btn').addEventListener('click', () => togglePicker());
@@ -409,7 +413,7 @@ $('#cat-delete').addEventListener('click', () => {
   if (!c) return;
   const items = inCategory(c.id);
   const question = items.length
-    ? `"${c.name}" has ${plural(items.length)} in it.\n\nDeleting the category also deletes ${items.length === 1 ? 'that achievement' : `all ${items.length} achievements`} in it. This can't be undone.\n\nDelete it anyway?`
+    ? `"${c.name}" has ${plural(items.length)} in it.\n\nDeleting the category also deletes ${items.length === 1 ? 'that achievement' : `all ${items.length} of them`}. This can't be undone.\n\nDelete it anyway?`
     : `Delete the category "${c.name}"?`;
   if (!confirm(question)) return;
   closeCategorySheet();

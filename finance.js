@@ -215,7 +215,7 @@ $('#fin-sheet-form').addEventListener('submit', (e) => {
   // Show it straight away (the totals update by themselves).
   if (state.history) { state.history.unshift(tx); state.history.sort((a, b) => b.key.localeCompare(a.key)); renderHistory(); }
   if (state.chartTx && date >= state.chartFrom) { state.chartTx.unshift(tx); }
-  toast(action.type === 'add' ? `Added ${formatMoney(amount)}.` : action.type === 'move' ? `Moved ${formatMoney(amount)} to card.` : `Saved: ${formatMoney(-amount)}.`);
+  toast(action.type === 'add' ? `Added ${formatMoney(amount)}.` : action.type === 'move' ? `Moved ${formatMoney(amount)} to card.` : `Spending of ${formatMoney(amount)} recorded.`);
 });
 
 function refreshLists() {
