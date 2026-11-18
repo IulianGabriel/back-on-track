@@ -1,0 +1,126 @@
+:root {
+  --bg: #191919;
+  --surface: #232323;
+  --border: #353535;
+  --text: #ececec;
+  --muted: #9b9b9b;
+  --accent: #2eaadc;
+  --done: #6b6b6b;
+  --danger: #e5534b;
+  --radius: 8px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, input { font: inherit; color: inherit; }
+
+.screen {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(16px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.center {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 8px;
+}
+.logo { width: 88px; height: 88px; border-radius: 20px; }
+h1 { margin: 8px 0 0; font-size: 28px; }
+h2 { font-size: 22px; margin: 28px 0 8px; }
+h2 .muted { font-weight: 400; font-size: 16px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.error { color: var(--danger); max-width: 320px; }
+
+/* Buttons */
+button { cursor: pointer; border-radius: var(--radius); }
+.primary {
+  margin-top: 16px; padding: 12px 22px; border: 0;
+  background: var(--text); color: #111; font-weight: 600;
+}
+.ghost {
+  background: transparent; border: 1px solid var(--border);
+  padding: 6px 12px;
+}
+.ghost:hover { background: var(--surface); }
+.ghost.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Header */
+.topbar {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.today { font-size: 18px; font-weight: 600; }
+
+/* Task list */
+.tasks { list-style: none; margin: 0; padding: 0; }
+.task {
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 0; min-height: 44px;
+}
+.task label {
+  display: flex; align-items: center; gap: 12px; flex: 1; cursor: pointer;
+  word-break: break-word;
+}
+.task input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; flex: none;
+  width: 22px; height: 22px; margin: 0;
+  border: 1.5px solid #8a8a8a; border-radius: 4px; cursor: pointer;
+  display: grid; place-content: center;
+}
+.task input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+.task input[type="checkbox"]:checked::after {
+  content: ""; width: 6px; height: 11px; margin-top: -2px;
+  border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.task.done .text { color: var(--done); text-decoration: line-through; }
+
+/* Edit mode */
+.task .edit-input {
+  flex: 1; min-width: 0; padding: 6px 8px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+}
+.task .tools { display: flex; gap: 4px; flex: none; }
+.task .tools button {
+  width: 34px; height: 34px; padding: 0; border: 1px solid var(--border); background: transparent;
+}
+.task .tools button.delete { color: var(--danger); }
+.empty { color: var(--muted); font-style: italic; padding: 6px 0; }
+
+/* Add form */
+.add-form { display: flex; gap: 8px; margin-top: 8px; }
+.add-form input {
+  flex: 1; min-width: 0; padding: 9px 10px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.add-form input:focus, .edit-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.reset-note { margin-top: 28px; }
+
+/* Footer */
+.settings {
+  margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.settings-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Toast */
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: #333; color: #fff; padding: 10px 16px; border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,.4); max-width: 90vw; text-align: center;
+}

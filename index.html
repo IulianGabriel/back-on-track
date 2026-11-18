@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Back on Track</title>
+  <meta name="theme-color" content="#191919">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="On Track">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Shown while we find out if you're signed in -->
+  <div id="loading" class="screen center">
+    <p class="muted">Loading…</p>
+  </div>
+
+  <!-- Sign-in screen -->
+  <div id="login" class="screen center" hidden>
+    <img src="icons/icon-192.png" alt="" class="logo">
+    <h1>Back on Track</h1>
+    <p class="muted">One step at a time.</p>
+    <button id="signin-btn" class="primary">Sign in with Google</button>
+    <p id="login-error" class="error" hidden></p>
+  </div>
+
+  <!-- Main app -->
+  <div id="app" class="screen" hidden>
+    <header class="topbar">
+      <div>
+        <div id="today-label" class="today"></div>
+        <div id="progress-label" class="muted small"></div>
+      </div>
+      <button id="edit-btn" class="ghost">Edit</button>
+    </header>
+
+    <main>
+      <section data-section="daily">
+        <h2>Daily</h2>
+        <ul class="tasks"></ul>
+        <form class="add-form">
+          <input type="text" placeholder="Add a daily task…" maxlength="300" enterkeyhint="done">
+          <button type="submit" class="ghost">Add</button>
+        </form>
+      </section>
+
+      <section data-section="additional">
+        <h2>Additional <span class="muted">(weekly or longer)</span></h2>
+        <ul class="tasks"></ul>
+        <form class="add-form">
+          <input type="text" placeholder="Add a weekly or monthly task…" maxlength="300" enterkeyhint="done">
+          <button type="submit" class="ghost">Add</button>
+        </form>
+      </section>
+
+      <p class="muted small reset-note">Checkmarks reset every night at 00:00 (Romanian time).</p>
+    </main>
+
+    <footer class="settings">
+      <div id="user-label" class="muted small"></div>
+      <div class="settings-buttons">
+        <button id="export-btn" class="ghost small">Download backup</button>
+        <button id="import-btn" class="ghost small">Restore backup</button>
+        <button id="signout-btn" class="ghost small">Sign out</button>
+      </div>
+      <input id="import-file" type="file" accept="application/json,.json" hidden>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
