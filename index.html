@@ -269,9 +269,12 @@
           <div id="emoji-picker" class="emoji-picker" hidden>
             <input id="emoji-search" class="emoji-search" placeholder="Search (e.g. heart), or paste an emoji" autocomplete="off" aria-label="Search or paste an emoji">
             <div id="emoji-tabs" class="emoji-tabs" role="tablist"></div>
-            <div id="emoji-grid" class="emoji-grid" role="listbox" aria-label="Emojis"><p class="empty">Loading emojis…</p></div>
+            <div id="emoji-grid" class="emoji-grid" aria-label="Emojis">
+              <div id="emoji-list" class="emoji-list"><p class="empty">Loading emojis…</p></div>
+              <div id="emoji-results" class="emoji-results" hidden></div>
+            </div>
             <div class="emoji-picker-foot">
-              <span id="emoji-hint" class="muted small"></span>
+              <span class="muted small">Tip: you can paste any emoji into the search box.</span>
               <button type="button" id="emoji-clear" class="link">No emoji</button>
             </div>
           </div>

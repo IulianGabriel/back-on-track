@@ -217,8 +217,15 @@ $('#ach-delete').addEventListener('click', () => {
 const catSheet = $('#cat-sheet');
 
 // ---------- Emoji picker (every standard emoji, by group, with search) ----------
+// Laid out like a phone keyboard: all groups in one scrolling list, and the tabs jump to a group.
+// Jumping is just a scroll, which is fast; emojis out of view aren't drawn until you get to them.
+// (Hiding one big group and showing another was what made it feel slow.)
 
-let emojiGroups = null;        // loaded the first time the picker opens
+const CHUNK = 40;               // emojis per block (5 rows of 8)
+const COLS = 8;
+let emojiGroups = null;         // loaded the first time the picker opens
+let sections = [];              // one section per group, in order
+let filled = [];                // whether a section's emojis have been added yet
 let activeGroup = 0;
 
 function setPicked(emoji) {
@@ -226,19 +233,90 @@ function setPicked(emoji) {
   const btn = $('#cat-emoji-btn');
   btn.textContent = emoji || '＋';
   btn.classList.toggle('empty-choice', !emoji);
+  for (const el of document.querySelectorAll('.emoji-cell.active')) el.classList.remove('active');
+  if (emoji) for (const el of document.querySelectorAll('.emoji-cell')) if (el.textContent === emoji) el.classList.add('active');
 }
+
+function makeBlock(items) {
+  const block = document.createElement('div');
+  block.className = 'emoji-block';
+  block.style.containIntrinsicSize = `auto ${Math.ceil(items.length / COLS) * 40}px`;   // exact height before it's drawn
+  for (const [emoji, name] of items) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'emoji-cell' + (emoji === state.pickedEmoji ? ' active' : '');
+    b.textContent = emoji;
+    b.title = name;
+    block.append(b);
+  }
+  return block;
+}
+
+const later = (fn) => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 150 }) : setTimeout(fn, 16));
+
+// Each section is created with its final height straight away, so filling it later never makes the list jump.
+function fillSection(i) {
+  if (filled[i]) return;
+  filled[i] = true;
+  const items = emojiGroups[i].emojis;
+  const body = sections[i].querySelector('.emoji-section-body');
+  for (let n = 0; n < items.length; n += CHUNK) body.append(makeBlock(items.slice(n, n + CHUNK)));
+}
+
+function buildSections() {
+  const list = $('#emoji-list');
+  sections = emojiGroups.map((g) => {
+    const s = document.createElement('section');
+    s.className = 'emoji-section';
+    s.innerHTML = '<h4 class="emoji-section-title"></h4><div class="emoji-section-body"></div>';
+    s.querySelector('h4').textContent = g.name;
+    s.querySelector('.emoji-section-body').style.minHeight = `${Math.ceil(g.emojis.length / COLS) * 40}px`;
+    return s;
+  });
+  filled = emojiGroups.map(() => false);
+  list.replaceChildren(...sections);
+  fillSection(0);
+  // Fill the rest in the background, one group at a time.
+  const next = (i) => { if (i < sections.length) later(() => { fillSection(i); next(i + 1); }); };
+  next(1);
+}
+
+function jumpTo(i) {
+  fillSection(i);
+  activeGroup = i;
+  highlightTab(i);
+  $('#emoji-list').scrollTop = sections[i].offsetTop;
+}
+
+function highlightTab(i) {
+  document.querySelectorAll('.emoji-tab').forEach((b, n) => b.classList.toggle('active', n === i));
+}
+
+// Keep the right tab highlighted while scrolling.
+let scrollQueued = false;
+$('#emoji-list').addEventListener('scroll', () => {
+  if (scrollQueued) return;
+  scrollQueued = true;
+  requestAnimationFrame(() => {
+    scrollQueued = false;
+    const top = $('#emoji-list').scrollTop + 8;
+    let current = 0;
+    sections.forEach((s, i) => { if (s.offsetTop <= top) current = i; });
+    if (current !== activeGroup) { activeGroup = current; highlightTab(current); }
+  });
+});
 
 async function togglePicker(open = $('#emoji-picker').hidden) {
   $('#emoji-picker').hidden = !open;
   $('#cat-emoji-btn').setAttribute('aria-expanded', open);
   if (!open) return;
   $('#emoji-search').value = '';
-  $('#emoji-hint').textContent = '';
+  $('#emoji-results').hidden = true;
   if (!emojiGroups) {
     try {
       emojiGroups = (await import('./emoji-data.js')).EMOJI_GROUPS;
     } catch (err) {
-      $('#emoji-grid').innerHTML = '<p class="empty">Couldn\'t load the emoji list. You can still paste an emoji above.</p>';
+      $('#emoji-list').innerHTML = '<p class="empty">Couldn\'t load the emoji list. You can still paste an emoji above.</p>';
       return;
     }
     $('#emoji-tabs').replaceChildren(...emojiGroups.map((g, i) => {
@@ -248,29 +326,16 @@ async function togglePicker(open = $('#emoji-picker').hidden) {
       b.textContent = g.icon;
       b.title = g.name;
       b.setAttribute('aria-label', g.name);
-      b.addEventListener('click', () => { activeGroup = i; $('#emoji-search').value = ''; renderGrid(); });
+      b.addEventListener('click', () => {
+        $('#emoji-search').value = '';
+        $('#emoji-results').hidden = true;
+        jumpTo(i);
+      });
       return b;
     }));
+    buildSections();
   }
-  renderGrid();
-}
-
-function renderGrid(list = null) {
-  const items = list || emojiGroups[activeGroup].emojis;
-  document.querySelectorAll('.emoji-tab').forEach((b, i) => b.classList.toggle('active', !list && i === activeGroup));
-  const grid = $('#emoji-grid');
-  if (!items.length) { grid.innerHTML = '<p class="empty">No emoji found.</p>'; return; }
-  const frag = document.createDocumentFragment();
-  for (const [emoji, name] of items) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'emoji-cell' + (emoji === state.pickedEmoji ? ' active' : '');
-    b.textContent = emoji;
-    b.title = name;
-    frag.append(b);
-  }
-  grid.replaceChildren(frag);
-  grid.scrollTop = 0;
+  jumpTo(activeGroup);
 }
 
 $('#emoji-grid').addEventListener('click', (e) => {
@@ -289,12 +354,17 @@ $('#emoji-search').addEventListener('input', (e) => {
     togglePicker(false);
     return;
   }
-  const q = text.trim().toLowerCase();
   if (!emojiGroups) return;
-  if (!q) { renderGrid(); return; }
+  const q = text.trim().toLowerCase();
+  const results = $('#emoji-results');
+  if (!q) { results.hidden = true; return; }
   const found = [];
   for (const g of emojiGroups) for (const item of g.emojis) if (item[1].includes(q)) found.push(item);
-  renderGrid(found.slice(0, 400));
+  results.replaceChildren();
+  if (!found.length) results.innerHTML = '<p class="empty">No emoji found.</p>';
+  for (let n = 0; n < Math.min(found.length, 400); n += CHUNK) results.append(makeBlock(found.slice(n, Math.min(n + CHUNK, 400))));
+  results.hidden = false;
+  results.scrollTop = 0;
 });
 $('#emoji-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
 
