@@ -4,10 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Back on Track</title>
-  <meta name="theme-color" content="#191919">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0d0e10">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="On Track">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png">
@@ -17,7 +18,7 @@
 <body>
   <!-- Shown while we find out if you're signed in -->
   <div id="loading" class="screen center">
-    <p class="muted">Loading…</p>
+    <div class="spinner" aria-label="Loading"></div>
   </div>
 
   <!-- Sign-in screen -->
@@ -25,48 +26,58 @@
     <img src="icons/icon-192.png" alt="" class="logo">
     <h1>Back on Track</h1>
     <p class="muted">One step at a time.</p>
-    <button id="signin-btn" class="primary">Sign in with Google</button>
+    <button id="signin-btn" class="primary">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21.35 11.1H12v2.98h5.35c-.5 2.4-2.6 3.92-5.35 3.92a6 6 0 1 1 3.9-10.56l2.2-2.2A9 9 0 1 0 21 12c0-.3-.02-.6-.05-.9z"/></svg>
+      Sign in with Google
+    </button>
     <p id="login-error" class="error" hidden></p>
   </div>
 
   <!-- Main app -->
   <div id="app" class="screen" hidden>
     <header class="topbar">
-      <div>
+      <div class="headline">
         <div id="today-label" class="today"></div>
         <div id="progress-label" class="muted small"></div>
       </div>
-      <button id="edit-btn" class="ghost">Edit</button>
+      <button id="edit-btn" class="pill">Edit</button>
     </header>
+    <div class="progress"><div id="progress-bar"></div></div>
 
     <main>
-      <section data-section="daily">
-        <h2>Daily</h2>
+      <section class="card" data-section="daily">
+        <div class="card-head">
+          <h2>Daily</h2>
+          <span class="count muted small"></span>
+        </div>
         <ul class="tasks"></ul>
         <form class="add-form">
-          <input type="text" placeholder="Add a daily task…" maxlength="300" enterkeyhint="done">
-          <button type="submit" class="ghost">Add</button>
+          <span class="plus" aria-hidden="true">+</span>
+          <input type="text" placeholder="Add a daily task" maxlength="300" enterkeyhint="done" aria-label="Add a daily task">
         </form>
       </section>
 
-      <section data-section="additional">
-        <h2>Additional <span class="muted">(weekly or longer)</span></h2>
+      <section class="card" data-section="additional">
+        <div class="card-head">
+          <h2>Additional <span class="muted sub">weekly or longer</span></h2>
+          <span class="count muted small"></span>
+        </div>
         <ul class="tasks"></ul>
         <form class="add-form">
-          <input type="text" placeholder="Add a weekly or monthly task…" maxlength="300" enterkeyhint="done">
-          <button type="submit" class="ghost">Add</button>
+          <span class="plus" aria-hidden="true">+</span>
+          <input type="text" placeholder="Add a weekly or monthly task" maxlength="300" enterkeyhint="done" aria-label="Add a weekly or monthly task">
         </form>
       </section>
 
-      <p class="muted small reset-note">Checkmarks reset every night at 00:00 (Romanian time).</p>
+      <p class="muted small note">Checkmarks reset every night at 00:00, Romanian time.</p>
     </main>
 
     <footer class="settings">
       <div id="user-label" class="muted small"></div>
       <div class="settings-buttons">
-        <button id="export-btn" class="ghost small">Download backup</button>
-        <button id="import-btn" class="ghost small">Restore backup</button>
-        <button id="signout-btn" class="ghost small">Sign out</button>
+        <button id="export-btn" class="link">Download backup</button>
+        <button id="import-btn" class="link">Restore backup</button>
+        <button id="signout-btn" class="link">Sign out</button>
       </div>
       <input id="import-file" type="file" accept="application/json,.json" hidden>
     </footer>

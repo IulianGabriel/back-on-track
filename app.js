@@ -133,9 +133,10 @@ function render() {
   $('#today-label').textContent = prettyToday();
   const daily = tasksIn('daily');
   const dailyDone = daily.filter(isDone).length;
-  $('#progress-label').textContent = daily.length
-    ? `Daily: ${dailyDone} of ${daily.length} done${dailyDone === daily.length ? ' 🎉' : ''}`
-    : '';
+  $('#progress-label').textContent = !daily.length ? 'Add your first daily task below'
+    : dailyDone === daily.length ? 'All daily tasks done. Well done.'
+    : `${dailyDone} of ${daily.length} daily tasks done`;
+  $('#progress-bar').style.width = daily.length ? `${(dailyDone / daily.length) * 100}%` : '0';
 
   $('#edit-btn').textContent = state.editMode ? 'Done' : 'Edit';
   $('#edit-btn').classList.toggle('active', state.editMode);
@@ -144,10 +145,12 @@ function render() {
     const list = $(`section[data-section="${section}"] .tasks`);
     const tasks = tasksIn(section);
     list.replaceChildren(...tasks.map((t, i) => renderTask(t, i, tasks.length)));
+    $(`section[data-section="${section}"] .count`).textContent =
+      tasks.length ? `${tasks.filter(isDone).length}/${tasks.length}` : '';
     if (!tasks.length) {
       const li = document.createElement('li');
       li.className = 'empty';
-      li.textContent = state.synced ? 'No tasks yet — add one below.' : 'Syncing…';
+      li.textContent = state.synced ? 'Nothing here yet.' : 'Syncing…';
       list.append(li);
     }
   }
