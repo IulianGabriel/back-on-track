@@ -14,7 +14,7 @@ const state = {
   totalsLoaded: false,
   unsubscribe: null,
   history: null, hasMore: false, loadingHistory: false,
-  range: '1M',
+  range: '7D',
   chartTx: null,             // entries since the chart's start date
   chartFrom: null,
   points: [],                // [{date, value}] for the line chart

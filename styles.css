@@ -412,7 +412,31 @@ h2 .sub { font-weight: 400; font-size: 13px; margin-left: 4px; }
 .ach-cat-tools { display: flex; justify-content: space-between; gap: 8px; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .emoji-row { grid-template-columns: 76px 1fr; }
-.emoji-field input { text-align: center; font-size: 22px; padding: 8px 6px; }
+.emoji-btn {
+  height: 47px; border-radius: 10px; background: var(--input); border: 1px solid var(--line);
+  font-size: 24px; line-height: 1; color: var(--faint);
+}
+.emoji-btn:hover, .emoji-btn[aria-expanded="true"] { border-color: var(--green-dim); }
+.emoji-btn.empty-choice { font-size: 20px; }
+.emoji-picker { border: 1px solid var(--line); border-radius: 12px; background: var(--bg); overflow: hidden; }
+.emoji-search {
+  width: 100%; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--line);
+  background: transparent; color: var(--text); font: inherit; font-size: 15px; outline: none;
+}
+.emoji-search::placeholder { color: var(--faint); }
+.emoji-tabs { display: flex; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+.emoji-tabs::-webkit-scrollbar { display: none; }
+.emoji-tab { flex: 1 0 36px; height: 36px; font-size: 18px; border-radius: 0; opacity: .55; border-bottom: 2px solid transparent; }
+.emoji-tab.active { opacity: 1; border-bottom-color: var(--green); }
+.emoji-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  max-height: 228px; overflow-y: auto; padding: 6px; overscroll-behavior: contain;
+}
+.emoji-grid .empty { grid-column: 1 / -1; padding: 10px; }
+.emoji-cell { height: 40px; font-size: 24px; border-radius: 8px; line-height: 1; }
+.emoji-cell:hover, .emoji-cell:focus-visible { background: var(--line); outline: none; }
+.emoji-cell.active { background: var(--green-dim); }
+.emoji-picker-foot { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px 6px 12px; border-top: 1px solid var(--line); }
 .field select, .field textarea {
   padding: 11px 12px; border-radius: 10px; background: var(--input); border: 1px solid var(--line);
   color: var(--text); font: inherit; font-size: 16px; outline: none; color-scheme: dark; width: 100%;
@@ -420,9 +444,6 @@ h2 .sub { font-weight: 400; font-size: 13px; margin-left: 4px; }
 .field textarea { resize: vertical; line-height: 1.5; }
 .field select:focus, .field textarea:focus { border-color: var(--green-dim); }
 .field textarea::placeholder { color: var(--faint); }
-.emoji-picks { display: flex; flex-wrap: wrap; gap: 6px; }
-.emoji-pick { width: 38px; height: 38px; border-radius: 10px; font-size: 19px; background: var(--input); border: 1px solid var(--line); }
-.emoji-pick.active { border-color: var(--green); background: var(--line); }
 .center-link { align-self: center; margin-top: 2px; }
 .sheet { max-height: 92vh; overflow-y: auto; }
 

@@ -2,7 +2,6 @@
 import * as store from './db.js';
 import { $, romanianDate, formatDate, toast, reportError } from './util.js';
 
-const QUICK_EMOJI = ['🏆', '⭐', '💪', '🏃', '🧠', '🎓', '📚', '💼', '💰', '🎮', '🎨', '🎵', '❤️', '🌱', '🍳', '✈️'];
 
 const state = {
   uid: null,
@@ -13,6 +12,7 @@ const state = {
   unsubscribe: null,
   editingAchievement: null,   // the achievement being edited, or null when adding
   editingCategory: null,
+  pickedEmoji: '',            // the emoji chosen in the category form
 };
 
 export function start(uid) {
@@ -45,12 +45,12 @@ const inCategory = (id) => state.achievements
   .filter((a) => (id === '__none' ? !state.categories.some((c) => c.id === a.categoryId) : a.categoryId === id))
   .sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title));
 
-// Keep just the first emoji someone types or pastes.
+// The first character someone types or pastes, but only if it's really an emoji (not "5" or "a").
 function firstEmoji(text) {
   const s = text.trim();
   if (!s) return '';
-  if (typeof Intl.Segmenter === 'function') return [...new Intl.Segmenter().segment(s)][0].segment;
-  return [...s][0];
+  const first = typeof Intl.Segmenter === 'function' ? [...new Intl.Segmenter().segment(s)][0].segment : [...s][0];
+  return /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u.test(first) ? first : '';
 }
 
 // ---------- Rendering ----------
@@ -216,29 +216,99 @@ $('#ach-delete').addEventListener('click', () => {
 
 const catSheet = $('#cat-sheet');
 
-$('#cat-emoji-picks').append(...QUICK_EMOJI.map((emoji) => {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.className = 'emoji-pick';
-  b.textContent = emoji;
-  b.addEventListener('click', () => { $('#cat-emoji').value = emoji; updatePicks(); });
-  return b;
-}));
+// ---------- Emoji picker (every standard emoji, by group, with search) ----------
 
-function updatePicks() {
-  const current = firstEmoji($('#cat-emoji').value);
-  for (const b of document.querySelectorAll('.emoji-pick')) b.classList.toggle('active', b.textContent === current);
+let emojiGroups = null;        // loaded the first time the picker opens
+let activeGroup = 0;
+
+function setPicked(emoji) {
+  state.pickedEmoji = emoji;
+  const btn = $('#cat-emoji-btn');
+  btn.textContent = emoji || '＋';
+  btn.classList.toggle('empty-choice', !emoji);
 }
-$('#cat-emoji').addEventListener('input', updatePicks);
+
+async function togglePicker(open = $('#emoji-picker').hidden) {
+  $('#emoji-picker').hidden = !open;
+  $('#cat-emoji-btn').setAttribute('aria-expanded', open);
+  if (!open) return;
+  $('#emoji-search').value = '';
+  $('#emoji-hint').textContent = '';
+  if (!emojiGroups) {
+    try {
+      emojiGroups = (await import('./emoji-data.js')).EMOJI_GROUPS;
+    } catch (err) {
+      $('#emoji-grid').innerHTML = '<p class="empty">Couldn\'t load the emoji list. You can still paste an emoji above.</p>';
+      return;
+    }
+    $('#emoji-tabs').replaceChildren(...emojiGroups.map((g, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'emoji-tab';
+      b.textContent = g.icon;
+      b.title = g.name;
+      b.setAttribute('aria-label', g.name);
+      b.addEventListener('click', () => { activeGroup = i; $('#emoji-search').value = ''; renderGrid(); });
+      return b;
+    }));
+  }
+  renderGrid();
+}
+
+function renderGrid(list = null) {
+  const items = list || emojiGroups[activeGroup].emojis;
+  document.querySelectorAll('.emoji-tab').forEach((b, i) => b.classList.toggle('active', !list && i === activeGroup));
+  const grid = $('#emoji-grid');
+  if (!items.length) { grid.innerHTML = '<p class="empty">No emoji found.</p>'; return; }
+  const frag = document.createDocumentFragment();
+  for (const [emoji, name] of items) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'emoji-cell' + (emoji === state.pickedEmoji ? ' active' : '');
+    b.textContent = emoji;
+    b.title = name;
+    frag.append(b);
+  }
+  grid.replaceChildren(frag);
+  grid.scrollTop = 0;
+}
+
+$('#emoji-grid').addEventListener('click', (e) => {
+  const cell = e.target.closest('.emoji-cell');
+  if (!cell) return;
+  setPicked(cell.textContent);
+  togglePicker(false);
+});
+
+// Type to search by name, or paste/type an emoji to use it directly.
+$('#emoji-search').addEventListener('input', (e) => {
+  const text = e.target.value;
+  const pasted = firstEmoji(text);
+  if (pasted) {
+    setPicked(pasted);
+    togglePicker(false);
+    return;
+  }
+  const q = text.trim().toLowerCase();
+  if (!emojiGroups) return;
+  if (!q) { renderGrid(); return; }
+  const found = [];
+  for (const g of emojiGroups) for (const item of g.emojis) if (item[1].includes(q)) found.push(item);
+  renderGrid(found.slice(0, 400));
+});
+$('#emoji-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+
+$('#cat-emoji-btn').addEventListener('click', () => togglePicker());
+$('#emoji-clear').addEventListener('click', () => { setPicked(''); togglePicker(false); });
 
 function openCategorySheet(category) {
   state.editingCategory = category;
   $('#cat-sheet-title').textContent = category ? 'Edit category' : 'New category';
   $('#cat-name').value = category?.name || '';
-  $('#cat-emoji').value = category?.emoji || '';
+  setPicked(category?.emoji || '');
+  togglePicker(false);
   $('#cat-delete').hidden = !category;
   $('#cat-sheet-error').textContent = '';
-  updatePicks();
   catSheet.hidden = false;
   if (!category) setTimeout(() => $('#cat-name').focus(), 50);
 }
@@ -255,7 +325,7 @@ $('#cat-form').addEventListener('submit', (e) => {
   const category = {
     id: editing?.id || crypto.randomUUID(),
     name: name.slice(0, 40),
-    emoji: firstEmoji($('#cat-emoji').value),
+    emoji: state.pickedEmoji,
     order: editing?.order ?? Date.now(),
   };
   closeCategorySheet();
@@ -267,15 +337,16 @@ $('#cat-form').addEventListener('submit', (e) => {
 $('#cat-delete').addEventListener('click', () => {
   const c = state.editingCategory;
   if (!c) return;
-  const n = inCategory(c.id).length;
-  if (n) {
-    $('#cat-sheet-error').textContent = `This category still has ${plural(n)}. Move them to another category or delete them first.`;
-    return;
-  }
-  if (!confirm(`Delete the category "${c.name}"?`)) return;
+  const items = inCategory(c.id);
+  const question = items.length
+    ? `"${c.name}" has ${plural(items.length)} in it.\n\nDeleting the category also deletes ${items.length === 1 ? 'that achievement' : `all ${items.length} achievements`} in it. This can't be undone.\n\nDelete it anyway?`
+    : `Delete the category "${c.name}"?`;
+  if (!confirm(question)) return;
   closeCategorySheet();
   state.expanded.delete(c.id);
-  store.deleteCategory(state.uid, c.id).then(() => toast('Category deleted.')).catch(reportError);
+  store.deleteCategory(state.uid, c.id, items.map((a) => a.id))
+    .then(() => toast(items.length ? `Category and ${plural(items.length)} deleted.` : 'Category deleted.'))
+    .catch(reportError);
 });
 
 // Hide an error message as soon as you start fixing it.

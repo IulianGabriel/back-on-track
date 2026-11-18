@@ -170,8 +170,8 @@
         <div class="card-head">
           <h2>Savings over time</h2>
           <div class="ranges" role="group" aria-label="Time range">
-            <button class="range-btn" data-range="7D">7D</button>
-            <button class="range-btn active" data-range="1M">1M</button>
+            <button class="range-btn active" data-range="7D">7D</button>
+            <button class="range-btn" data-range="1M">1M</button>
             <button class="range-btn" data-range="3M">3M</button>
             <button class="range-btn" data-range="1Y">1Y</button>
           </div>
@@ -259,14 +259,22 @@
         <form id="cat-form" class="sheet" autocomplete="off">
           <h3 id="cat-sheet-title">New category</h3>
           <div class="field-row emoji-row">
-            <label class="field emoji-field"><span>Emoji</span>
-              <input id="cat-emoji" maxlength="16" placeholder="🙂" aria-label="Emoji (optional)">
-            </label>
+            <div class="field emoji-field"><span>Emoji</span>
+              <button type="button" id="cat-emoji-btn" class="emoji-btn" aria-label="Choose an emoji" aria-expanded="false"></button>
+            </div>
             <label class="field"><span>Name</span>
               <input id="cat-name" maxlength="40" placeholder="e.g. Gaming, Health, School" enterkeyhint="done">
             </label>
           </div>
-          <div id="cat-emoji-picks" class="emoji-picks" aria-label="Quick emoji"></div>
+          <div id="emoji-picker" class="emoji-picker" hidden>
+            <input id="emoji-search" class="emoji-search" placeholder="Search (e.g. heart), or paste an emoji" autocomplete="off" aria-label="Search or paste an emoji">
+            <div id="emoji-tabs" class="emoji-tabs" role="tablist"></div>
+            <div id="emoji-grid" class="emoji-grid" role="listbox" aria-label="Emojis"><p class="empty">Loading emojis…</p></div>
+            <div class="emoji-picker-foot">
+              <span id="emoji-hint" class="muted small"></span>
+              <button type="button" id="emoji-clear" class="link">No emoji</button>
+            </div>
+          </div>
           <p id="cat-sheet-error" class="error"></p>
           <div class="sheet-buttons">
             <button type="button" id="cat-cancel" class="sheet-cancel">Cancel</button>

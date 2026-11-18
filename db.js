@@ -241,7 +241,15 @@ export function watchAchievements(uid, onChange, onError) {
 export function saveCategory(uid, { id, ...data }, isNew = false) {
   return setDoc(doc(categoriesCol(uid), id), isNew ? { ...data, createdAt: serverTimestamp() } : data, { merge: true });
 }
-export const deleteCategory = (uid, id) => deleteDoc(doc(categoriesCol(uid), id));
+// Deletes a category together with the achievements in it, all at once.
+export async function deleteCategory(uid, id, achievementIds = []) {
+  const refs = [doc(categoriesCol(uid), id), ...achievementIds.map((a) => doc(achievementsCol(uid), a))];
+  for (let i = 0; i < refs.length; i += 400) {
+    const batch = writeBatch(db);
+    refs.slice(i, i + 400).forEach((ref) => batch.delete(ref));
+    await batch.commit();
+  }
+}
 
 export function saveAchievement(uid, { id, ...data }, isNew = false) {
   return setDoc(doc(achievementsCol(uid), id), isNew ? { ...data, createdAt: serverTimestamp() } : data, { merge: true });
