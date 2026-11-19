@@ -190,10 +190,11 @@ function renderCard(a) {
       b.className = 'ach-photo';
       b.setAttribute('aria-label', `Open photo ${i + 1} of ${photos.length}`);
       const img = document.createElement('img');
-      img.src = ph.thumb;
+      img.src = fullCache.get(ph.id) || ph.thumb;     // the preview first…
       img.alt = '';
-      img.loading = 'lazy';
       img.decoding = 'async';
+      img.dataset.photoId = ph.id;
+      if (!fullCache.has(ph.id) && sharpen) sharpen.observe(img);   // …then the sharp version once it's on screen
       b.append(img);
       b.addEventListener('click', () => openViewer(photos, i));
       grid.append(b);
@@ -220,10 +221,35 @@ function renderCard(a) {
   return card;
 }
 
+// ---------- Full-size photos ----------
+// Cards show the small preview first, then switch to the full-size photo once the card is on
+// screen (so photos look sharp even on a wide PC screen). Only photos you scroll to are loaded.
+
+const fullCache = new Map();          // photo id → full-size image, once loaded
+const loading = new Map();            // photo id → the request in progress
+
+function getFullPhoto(id) {
+  if (fullCache.has(id)) return Promise.resolve(fullCache.get(id));
+  if (!loading.has(id)) {
+    loading.set(id, store.getAchievementPhoto(state.uid, id)
+      .then((full) => { if (full) fullCache.set(id, full); return full; })
+      .finally(() => loading.delete(id)));
+  }
+  return loading.get(id);
+}
+
+const sharpen = 'IntersectionObserver' in window ? new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    const img = entry.target;
+    sharpen.unobserve(img);
+    getFullPhoto(img.dataset.photoId).then((full) => { if (full && img.isConnected) img.src = full; }).catch(() => {});
+  }
+}, { rootMargin: '300px 0px' }) : null;
+
 // ---------- Full-screen photo viewer ----------
 
 const viewer = $('#photo-viewer');
-const fullCache = new Map();          // photo id → full-size image, once loaded
 const view = { photos: [], index: 0 };
 
 function openViewer(photos, index) {
@@ -251,8 +277,7 @@ async function showViewerPhoto() {
   img.classList.toggle('loading', !fullCache.has(ph.id));
   if (fullCache.has(ph.id)) return;
   try {
-    const full = await store.getAchievementPhoto(state.uid, ph.id);
-    if (full) fullCache.set(ph.id, full);
+    const full = await getFullPhoto(ph.id);
     if (view.photos[view.index]?.id === ph.id && !viewer.hidden) {
       if (full) img.src = full;
       img.classList.remove('loading');
