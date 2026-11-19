@@ -217,19 +217,40 @@
 
     <!-- ===== Achievements tab ===== -->
     <div id="tab-achievements" hidden>
-      <header class="topbar">
-        <div class="headline">
-          <div class="today">Achievements</div>
-          <div id="ach-subtitle" class="muted small"></div>
-        </div>
-      </header>
-      <div class="progress"></div>
+      <!-- Overview: all categories -->
+      <div id="ach-overview">
+        <header class="topbar">
+          <div class="headline">
+            <div class="today">Achievements</div>
+            <div id="ach-subtitle" class="muted small"></div>
+          </div>
+        </header>
+        <div class="progress"></div>
 
-      <div class="ach-actions">
-        <button id="ach-add-btn" class="ach-primary">+ Achievement</button>
-        <button id="cat-add-btn" class="ach-secondary">+ Category</button>
+        <div class="ach-actions">
+          <button id="ach-add-btn" class="ach-primary">+ Achievement</button>
+          <button id="cat-add-btn" class="ach-secondary">+ Category</button>
+        </div>
+        <div id="ach-list"></div>
       </div>
-      <div id="ach-list"></div>
+
+      <!-- One category's page -->
+      <div id="ach-category-view" hidden>
+        <header class="topbar day-nav">
+          <button id="ach-back" class="arrow-btn" aria-label="Back to all categories" title="All categories">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="headline">
+            <div class="today cv-title"><span id="cv-emoji"></span><span id="cv-name"></span></div>
+            <div id="cv-count" class="muted small"></div>
+          </div>
+          <button id="cv-edit" class="pill">Edit</button>
+        </header>
+        <div class="progress"></div>
+
+        <button id="cv-add" class="ach-primary cv-add">+ Add achievement</button>
+        <div id="cv-list" class="cv-list"></div>
+      </div>
 
       <!-- Achievement form -->
       <div id="ach-sheet" class="sheet-backdrop" hidden>
@@ -243,12 +264,29 @@
             <label class="field"><span>Category</span><select id="ach-category"></select></label>
           </div>
           <label class="field"><span>Description</span>
-            <textarea id="ach-description" rows="4" maxlength="2000" placeholder="How did it happen? How did it feel? (optional)"></textarea>
+            <textarea id="ach-description" rows="3" maxlength="2000" placeholder="How did it happen? How did it feel? (optional)"></textarea>
           </label>
+          <div class="field">
+            <span>Photos <span class="optional">(optional, up to 4)</span></span>
+            <div class="draft-photos">
+              <div id="ach-photo-list" class="draft-photo-list"></div>
+              <button type="button" id="ach-photo-add" class="draft-add-photo" aria-label="Add photos">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+                <span>Add</span>
+              </button>
+            </div>
+            <span id="ach-photo-hint" class="muted small"></span>
+            <input id="ach-photo-file" type="file" accept="image/*" multiple hidden>
+          </div>
+          <div class="field">
+            <span>Links <span class="optional">(optional, up to 5)</span></span>
+            <div id="ach-link-list" class="draft-link-list"></div>
+            <button type="button" id="ach-link-add" class="draft-add-link">+ Add a link</button>
+          </div>
           <p id="ach-sheet-error" class="error"></p>
           <div class="sheet-buttons">
             <button type="button" id="ach-cancel" class="sheet-cancel">Cancel</button>
-            <button type="submit" class="sheet-submit">Save</button>
+            <button type="submit" id="ach-save" class="sheet-submit">Save</button>
           </div>
           <button type="button" id="ach-delete" class="delete-link center-link" hidden>Delete achievement</button>
         </form>
@@ -364,6 +402,15 @@
         <span>Profile</span>
       </button>
     </nav>
+  </div>
+
+  <!-- Full-screen photo viewer (achievements) -->
+  <div id="photo-viewer" class="viewer" hidden role="dialog" aria-label="Photo">
+    <img id="viewer-img" alt="">
+    <button id="viewer-close" class="viewer-btn viewer-close" aria-label="Close">✕</button>
+    <button id="viewer-prev" class="viewer-btn viewer-prev" aria-label="Previous photo">‹</button>
+    <button id="viewer-next" class="viewer-btn viewer-next" aria-label="Next photo">›</button>
+    <div id="viewer-count" class="viewer-count"></div>
   </div>
 
   <div id="toast" class="toast" hidden></div>

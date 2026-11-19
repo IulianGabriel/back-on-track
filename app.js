@@ -66,7 +66,7 @@ $('#signout-btn').addEventListener('click', () => {
 // ---------- Bottom navigation ----------
 
 function currentTab() {
-  const tab = location.hash.slice(1);
+  const tab = location.hash.slice(1).split('/')[0];   // e.g. "#achievements/<category>" → achievements
   return TABS.includes(tab) ? tab : 'tasks';
 }
 
@@ -79,6 +79,7 @@ function showTab(tab) {
   }
   if (tab === 'journal') journal.onShow();
   if (tab === 'finance') finance.onShow();
+  if (tab === 'achievements') achievements.onShow();
   if (tab === 'profile') profile.onShow();
 }
 
@@ -159,7 +160,13 @@ $('#import-file').addEventListener('change', async (e) => {
       .map(({ id, name, emoji, order }) => ({ id, name, emoji: emoji || '', order: Number(order) || 0 }));
     const backupAchievements = (ach.achievements || []).filter((a) => a && typeof a.id === 'string' && typeof a.title === 'string'
       && typeof a.categoryId === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(a.date))
-      .map(({ id, title, date, categoryId, description }) => ({ id, title, date, categoryId, description: description || '' }));
+      .map(({ id, title, date, categoryId, description, links, photos }) => ({
+        id, title, date, categoryId, description: description || '',
+        links: Array.isArray(links) ? links.filter((l) => typeof l === 'string' && /^https?:\/\//.test(l)) : [],
+        photos: Array.isArray(photos) ? photos.filter((p) => p && typeof p.id === 'string' && /^data:image\//.test(p.thumb || '')).map(({ id: pid, thumb }) => ({ id: pid, thumb })) : [],
+      }));
+    const backupPhotos = (ach.photos || []).filter((p) => p && typeof p.id === 'string' && typeof p.achievementId === 'string' && /^data:image\//.test(p.full || ''))
+      .map(({ id, achievementId, full }) => ({ id, achievementId, full }));
     if (!backupTasks.length && !backupJournal.length && !backupFinance.length && !backupAchievements.length && !backupCategories.length) {
       throw new Error('Nothing to restore in that file.');
     }
@@ -183,7 +190,7 @@ $('#import-file').addEventListener('change', async (e) => {
       if (currentTab() === 'finance') finance.onShow();
     }
     if (backupCategories.length || backupAchievements.length) {
-      await store.importAchievements(uid, { categories: backupCategories, achievements: backupAchievements });
+      await store.importAchievements(uid, { categories: backupCategories, achievements: backupAchievements, photos: backupPhotos });
     }
     toast('Backup restored.');
     if (journalToRestore.length) { journal.start(uid); if (currentTab() === 'journal') journal.onShow(); }

@@ -222,11 +222,15 @@ export async function importFinance(uid, entries) {
 }
 
 // ---------- Achievements ----------
-// users/{uid}/achievementCategories/{id}: { name, emoji, createdAt }
-// users/{uid}/achievements/{id}:          { title, date, categoryId, description, createdAt }
+// users/{uid}/achievementCategories/{id}: { name, emoji, order, createdAt }
+// users/{uid}/achievements/{id}:          { title, date, categoryId, description, links: [url],
+//                                           photos: [{ id, thumb }], createdAt }
+// users/{uid}/achievementPhotos/{id}:     { achievementId, full }  (the full-size photo, loaded only when opened)
+// Photos are small JPEGs stored as text, because file storage isn't part of Firebase's free plan.
 
 const categoriesCol = (uid) => collection(db, 'users', uid, 'achievementCategories');
 const achievementsCol = (uid) => collection(db, 'users', uid, 'achievements');
+const photosCol = (uid) => collection(db, 'users', uid, 'achievementPhotos');
 const plain = (d) => { const { createdAt, ...data } = d.data(); return { id: d.id, ...data }; };
 
 // Live updates for both lists; calls back with { categories, achievements } whenever either changes.
@@ -241,41 +245,72 @@ export function watchAchievements(uid, onChange, onError) {
 export function saveCategory(uid, { id, ...data }, isNew = false) {
   return setDoc(doc(categoriesCol(uid), id), isNew ? { ...data, createdAt: serverTimestamp() } : data, { merge: true });
 }
-// Deletes a category together with the achievements in it, all at once.
-export async function deleteCategory(uid, id, achievementIds = []) {
-  const refs = [doc(categoriesCol(uid), id), ...achievementIds.map((a) => doc(achievementsCol(uid), a))];
-  for (let i = 0; i < refs.length; i += 400) {
-    const batch = writeBatch(db);
-    refs.slice(i, i + 400).forEach((ref) => batch.delete(ref));
-    await batch.commit();
+
+// Writes are split into several batches if needed: a batch can carry about 10 MB.
+async function commitInParts(ops) {
+  let batch = writeBatch(db), size = 0, count = 0;
+  for (const op of ops) {
+    const weight = op.data ? JSON.stringify(op.data).length : 100;
+    if (count && (count >= 400 || size + weight > 8_000_000)) { await batch.commit(); batch = writeBatch(db); size = 0; count = 0; }
+    if (op.data) batch.set(op.ref, op.data, op.merge ? { merge: true } : undefined); else batch.delete(op.ref);
+    size += weight; count++;
   }
+  if (count) await batch.commit();
 }
 
-export function saveAchievement(uid, { id, ...data }, isNew = false) {
-  return setDoc(doc(achievementsCol(uid), id), isNew ? { ...data, createdAt: serverTimestamp() } : data, { merge: true });
+// Deletes a category together with the achievements (and their photos) in it.
+export function deleteCategory(uid, id, achievements = []) {
+  return commitInParts([
+    { ref: doc(categoriesCol(uid), id) },
+    ...achievements.flatMap((a) => [
+      { ref: doc(achievementsCol(uid), a.id) },
+      ...(a.photos || []).map((p) => ({ ref: doc(photosCol(uid), p.id) })),
+    ]),
+  ]);
 }
-export const deleteAchievement = (uid, id) => deleteDoc(doc(achievementsCol(uid), id));
+
+// Saves an achievement, adds new photos and removes deleted ones, all at once.
+export function saveAchievement(uid, { id, ...data }, isNew = false, { addPhotos = [], removePhotoIds = [] } = {}) {
+  return commitInParts([
+    ...addPhotos.map((p) => ({ ref: doc(photosCol(uid), p.id), data: { achievementId: id, full: p.full } })),
+    { ref: doc(achievementsCol(uid), id), data: isNew ? { ...data, createdAt: serverTimestamp() } : data, merge: !isNew },
+    ...removePhotoIds.map((pid) => ({ ref: doc(photosCol(uid), pid) })),
+  ]);
+}
+
+export function deleteAchievement(uid, achievement) {
+  return commitInParts([
+    { ref: doc(achievementsCol(uid), achievement.id) },
+    ...(achievement.photos || []).map((p) => ({ ref: doc(photosCol(uid), p.id) })),
+  ]);
+}
+
+// The full-size photo (cached on the device after the first time).
+export async function getAchievementPhoto(uid, photoId) {
+  const snap = await getDoc(doc(photosCol(uid), photoId));
+  return snap.exists() ? snap.data().full : null;
+}
 
 export async function getAllAchievements(uid) {
-  const [cats, ach] = await Promise.all([getDocs(categoriesCol(uid)), getDocs(achievementsCol(uid))]);
-  return { categories: cats.docs.map(plain), achievements: ach.docs.map(plain) };
+  const [cats, ach, photos] = await Promise.all([getDocs(categoriesCol(uid)), getDocs(achievementsCol(uid)), getDocs(photosCol(uid))]);
+  return {
+    categories: cats.docs.map(plain),
+    achievements: ach.docs.map(plain),
+    photos: photos.docs.map((d) => ({ id: d.id, ...d.data() })),
+  };
 }
 
-// Restore: only adds categories/achievements that aren't in the app yet (never overwrites).
-export async function importAchievements(uid, { categories, achievements }) {
+// Restore: only adds what isn't in the app yet (never overwrites).
+export async function importAchievements(uid, { categories, achievements, photos = [] }) {
   const current = await getAllAchievements(uid);
-  const haveCat = new Set(current.categories.map((c) => c.id));
-  const haveAch = new Set(current.achievements.map((a) => a.id));
-  const writes = [
-    ...categories.filter((c) => !haveCat.has(c.id)).map(({ id, ...d }) => [doc(categoriesCol(uid), id), d]),
-    ...achievements.filter((a) => !haveAch.has(a.id)).map(({ id, ...d }) => [doc(achievementsCol(uid), id), d]),
+  const have = new Set([...current.categories, ...current.achievements, ...current.photos].map((x) => x.id));
+  const ops = [
+    ...categories.filter((c) => !have.has(c.id)).map(({ id, ...d }) => ({ ref: doc(categoriesCol(uid), id), data: d })),
+    ...achievements.filter((a) => !have.has(a.id)).map(({ id, ...d }) => ({ ref: doc(achievementsCol(uid), id), data: d })),
+    ...photos.filter((p) => !have.has(p.id)).map(({ id, ...d }) => ({ ref: doc(photosCol(uid), id), data: d })),
   ];
-  for (let i = 0; i < writes.length; i += 400) {
-    const batch = writeBatch(db);
-    writes.slice(i, i + 400).forEach(([ref, data]) => batch.set(ref, data));
-    await batch.commit();
-  }
-  return writes.length;
+  await commitInParts(ops);
+  return ops.length;
 }
 
 // ---------- Profile ----------

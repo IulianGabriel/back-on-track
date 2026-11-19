@@ -15,8 +15,8 @@ and can be installed on the home screen.
 - **Finance:** savings on card and in cash. Add, spend, or move cash to card, each with an optional note
   and date. A ring chart for the card/cash split, a savings-over-time chart (7D / 1M / 3M / 1Y) and
   what you added and spent this month.
-- **Achievements:** your own categories (name + emoji) and the achievements in them, with a date and
-  description.
+- **Achievements:** your own categories (name + emoji). Each category has its own page with the
+  achievements as cards: title, date, description, up to 4 photos (tap for full screen) and up to 5 links.
 - **Profile:** your name and photo, your savings, streaks, backups and sign-out.
 - **Google sign-in.** Everything is saved to your Firebase database and syncs between devices.
 - **Works offline.** Changes upload when you're back online.
@@ -54,5 +54,6 @@ All under `users/{yourUserId}/`:
 - `journal/{YYYY-MM-DD}`: that day's text
 - `finance/{id}`: one money movement (amounts are stored in bani, 1 RON = 100 bani)
 - `meta/finance`: current card and cash totals
-- `achievementCategories/{id}` and `achievements/{id}`
+- `achievementCategories/{id}` and `achievements/{id}` (with links and small photo thumbnails)
+- `achievementPhotos/{id}`: the full-size photos (shrunk JPEGs, loaded only when opened)
 - `meta/profile`: name and photo
